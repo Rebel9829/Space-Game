@@ -3,16 +3,15 @@
 
 int POS_X, POS_Y;
 
-std::string model1 = "Models/X-WING1.obj";
-std::string model_b = "Models/background.obj";
-std::string model2 = "Models/satellite.obj";
-std::string model3 = "Models/asteroid.obj";
+std::string spacecraft_str = "Models/X-WING1.obj";
+std::string satellite_str = "Models/satellite.obj";
+std::string asteroid_str = "Models/as1.obj";
 
 GLfloat light_pos[] = {-10.0f, 10.0f, 100.00f, 1.0f};
 
-float pos_x, pos_y, pos_z, trans_y;
-float pos_x1, pos_y1, pos_z1;
-float pos_x2, pos_y2, pos_z2;
+float spacecraft_x, spacecraft_y, spacecraft_z, trans_y;
+float satellite_x, satellite_y, satellite_z;
+float asteroid_x, asteroid_y, asteroid_z;
 float angle_x = -45.0f, angle_y = 90.0f;
 float ast_pos = 1000.0;
 
@@ -24,10 +23,10 @@ bool is_holding_mouse = false;
 bool is_updated = false;
 bool start = true;
 
-Model bg;
-Model model;
-Model model_1;
-Model model_2;
+Model spacecraft_model;
+Model satellite_model;
+Model asteroid_model;
+
 float initial = 0.0;
 
 float randomFloat()
@@ -76,25 +75,23 @@ void init()
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_DEPTH_TEST);
 
-    model.load(model1.c_str());
-    model_1.load(model2.c_str());
-    model_2.load(model3.c_str());
-    bg.load(model_b.c_str());
+    spacecraft_model.load(spacecraft_str.c_str());
+    satellite_model.load(satellite_str.c_str());
+    asteroid_model.load(asteroid_str.c_str());
 
-    pos_x = model.pos_x;
-    pos_y = model.pos_y;
-    pos_z = model.pos_z - 1.0f;
+    spacecraft_x = spacecraft_model.pos_x;
+    spacecraft_y = spacecraft_model.pos_y;
+    spacecraft_z = spacecraft_model.pos_z - 1.0f;
 
-    pos_x1 = model_1.pos_x;
-    pos_y1 = model_1.pos_y;
-    pos_z1 = model_1.pos_z - 1.0f;
+    satellite_x = satellite_model.pos_x;
+    satellite_y = satellite_model.pos_y;
+    satellite_z = satellite_model.pos_z - 1.0f;
 
-    pos_x2 = model_2.pos_x;
-    pos_y2 = model_2.pos_y;
-    pos_z2 = model_2.pos_z - 1.0f;
+    asteroid_x = asteroid_model.pos_x;
+    asteroid_y = asteroid_model.pos_y;
+    asteroid_z = asteroid_model.pos_z - 1.0f;
 
-    zoom_per_scroll = -model.pos_z / 10.0f;
-    zoom_per_scroll = -model_1.pos_z / 10.0f;
+    zoom_per_scroll = -spacecraft_model.pos_z / 10.0f;
 }
 
 void display()
@@ -102,42 +99,39 @@ void display()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
-    glDisable(GL_LIGHTING);
     glPushMatrix();
+    glDisable(GL_LIGHTING);
     glDepthMask(GL_FALSE); // disable depth writes
     glTranslatef(0, trans_y, 0);
     background();
     glDepthMask(GL_TRUE); // enable depth writes
-    glPopMatrix();
     glEnable(GL_LIGHTING);
-
     glPushMatrix();
-    glTranslatef(pos_x, pos_y - 8.0, pos_z + 3);
+    glTranslatef(asteroid_x, asteroid_y, asteroid_z-5);
+    asteroid_model.draw();
+    glPopMatrix();
+    glPopMatrix();
+    // std::cout<<asteroid_z<<" "<<spacecraft_z;
+    glPushMatrix();
+    glTranslatef(spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3);
     glRotatef(angle_x, 1.0f, 0.0f, 0.0f);
     glRotatef(angle_y, 0.0f, 1.0f, 0.0f);
     glRotatef(90, 0, 0, 1);
-    model.draw();
+    spacecraft_model.draw();
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(satellite_x+15, satellite_y, satellite_z-50);
+    // glRotatef(angle_x, 1.0f, 0.0f, 0.0f);
+    // glRotatef(angle_y, 0.0f, 1.0f, 0.0f);
+    satellite_model.draw();
     glPopMatrix();
 
     // glPushMatrix();
-    // glTranslatef(pos_x1+3, pos_y1, pos_z1);
+    // glTranslatef(asteroid_x - 10, asteroid_y + 20, asteroid_z - ast_pos);
     // glRotatef(angle_x, 1.0f, 0.0f, 0.0f);
     // glRotatef(angle_y, 0.0f, 1.0f, 0.0f);
-    // model_1.draw();
-    // glPopMatrix();
-
-    // glPushMatrix();
-    // glTranslatef(pos_x2 + 10, pos_y2, pos_z2 - ast_pos);
-    // glRotatef(angle_x, 1.0f, 0.0f, 0.0f);
-    // glRotatef(angle_y, 0.0f, 1.0f, 0.0f);
-    // model_2.draw();
-    // glPopMatrix();
-
-    // glPushMatrix();
-    // glTranslatef(pos_x2 - 10, pos_y2 + 20, pos_z2 - ast_pos);
-    // glRotatef(angle_x, 1.0f, 0.0f, 0.0f);
-    // glRotatef(angle_y, 0.0f, 1.0f, 0.0f);
-    // model_2.draw();
+    // asteroid_model.draw();
     // glPopMatrix();
 
     glFlush();
@@ -149,6 +143,7 @@ void timer(int value)
     if (start)
     {
         trans_y -= 0.01;
+        if(trans_y < -8) trans_y+=20;
         // initial+=0.01;
     }
 
@@ -165,25 +160,25 @@ void specialKeyFunc(int key, int x, int y)
 {
     if (key == GLUT_KEY_DOWN)
     {
-        pos_y -= 0.1;
-        if (pos_y < -10.5)
-            pos_y = -8.5;
+        spacecraft_y -= 0.1;
+        if (spacecraft_y < -10.5)
+            spacecraft_y = -8.5;
     }
     else if (key == GLUT_KEY_UP)
     {
-        pos_y += 0.1;
+        spacecraft_y += 0.1;
         // if (pos_y > 0.9)
         //     pos_y = -0.9;
     }
     else if (key == GLUT_KEY_RIGHT)
     {
-        pos_x += 0.1;
+        spacecraft_x += 0.1;
         // if (pos_x > 0.4)
         //     pos_x = 0.3;
     }
     else if (key == GLUT_KEY_LEFT)
     {
-        pos_x -= 0.1;
+        spacecraft_x -= 0.1;
         // if (pos_x < -1.4)
         //     pos_x = 0.3;
     }
@@ -225,14 +220,14 @@ void mouse(int button, int state, int x, int y)
             if (current_scroll > 0)
             {
                 current_scroll--;
-                pos_z += zoom_per_scroll;
+                spacecraft_z += zoom_per_scroll;
             }
             break;
         case 4:
             if (current_scroll < 15)
             {
                 current_scroll++;
-                pos_z -= zoom_per_scroll;
+                spacecraft_z -= zoom_per_scroll;
             }
             break;
         }
