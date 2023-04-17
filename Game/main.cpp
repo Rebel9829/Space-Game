@@ -1,13 +1,8 @@
 #include "main.h"
 #include <bits/stdc++.h>
 
-int POS_X, POS_Y;
-
 std::string spacecraft_str = "Models/X-WING1.obj";
 std::string satellite_str = "Models/satellite.obj";
-std::string asteroid1_str = "Models/as1.obj";
-std::string asteroid2_str = "Models/as2.obj";
-std::string asteroid3_str = "Models/as3.obj";
 std::string asteroid4_str = "Models/as4.obj";
 std::string asteroid5_str = "Models/as5.obj";
 std::string asteroid6_str = "Models/as6.obj";
@@ -21,9 +16,6 @@ GLfloat light_pos[] = {-10.0f, 10.0f, 100.00f, 1.0f};
 float spacecraft_x, spacecraft_y, spacecraft_z, trans_y, ast_y;
 float spacecraft_x_old, spacecraft_y_old, spacecraft_z_old;
 float satellite_x, satellite_y, satellite_z;
-float asteroid1_x, asteroid1_y, asteroid1_z;
-float asteroid2_x, asteroid2_y, asteroid2_z;
-float asteroid3_x, asteroid3_y, asteroid3_z;
 float asteroid4_x, asteroid4_y, asteroid4_z;
 float asteroid5_x, asteroid5_y, asteroid5_z;
 float asteroid6_x, asteroid6_y, asteroid6_z;
@@ -38,7 +30,7 @@ float ast_pos = 1000.0;
 
 int x_old = 0, y_old = 0, x_satellite_old = 0, y_satellite_old = 0;
 int level = 1;
-float level_speed = 0.02;
+float level_speed = 0.04;
 int current_scroll = 5;
 float distance_covered = 0;
 int score = 0;
@@ -46,17 +38,13 @@ float zoom_per_scroll = 0;
 
 bool is_holding_mouse = false;
 bool is_updated = false;
-bool start = false;
+bool start = true;
 bool space_pressed = false;
-bool show_menu = false;
-bool collision_menu = true;
-bool display_level = true;
+bool show_menu = true;
+bool collision_menu = false;
 
 Model spacecraft_model;
 Model satellite_model;
-Model asteroid1_model;
-Model asteroid2_model;
-Model asteroid3_model;
 Model asteroid4_model;
 Model asteroid5_model;
 Model asteroid6_model;
@@ -65,6 +53,32 @@ Model asteroid8_model;
 Model asteroid9_model;
 Model asteroid10_model;
 Model particle_model;
+
+float distance(float x1, float y1, float z1, float x2, float y2, float z2)
+{
+    float dist = 0;
+    dist += (x1 - x2) * (x1 - x2);
+    dist += (y2 - y1) * (y2 - y1);
+    dist += (z1 - z2) * (z1 - z2);
+    return dist;
+}
+bool check()
+{
+    bool ans = true;
+    ans = ans and (distance(asteroid6_x, asteroid6_y + 10 + ast_y, asteroid6_z - 10, spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3) > 35);
+    ans = ans and (distance(asteroid9_x + 5, asteroid9_y + 20 + ast_y, asteroid9_z - 4, spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3) > 35);
+    ans = ans and (distance(asteroid4_x - 10, asteroid4_y + 30 + ast_y, asteroid4_z - 14, spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3) > 35);
+    ans = ans and (distance(asteroid5_x - 5, asteroid5_y + 40 + ast_y, asteroid5_z - 10, spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3) > 35);
+    ans = ans and (distance(asteroid6_x + 9, asteroid6_y + 50 + ast_y, asteroid6_z - 10, spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3) > 35);
+    ans = ans and (distance(asteroid10_x - 5, asteroid10_y + 60 + ast_y, asteroid10_z - 4, spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3) > 35);
+    ans = ans and (distance(asteroid8_x - 8, asteroid8_y + 70 + ast_y, asteroid8_z - 12, spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3) > 35);
+    ans = ans and (distance(asteroid5_x + 5, asteroid5_y + 80 + ast_y, asteroid5_z - 10, spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3) > 35);
+    ans = ans and (distance(asteroid7_x - 5, asteroid7_y + 90 + ast_y, asteroid7_z - 15, spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3) > 35);
+
+    // std::cout<<ans<<"\n";
+
+    return ans;
+}
 
 float randomFloat()
 {
@@ -114,9 +128,6 @@ void init()
 
     spacecraft_model.load(spacecraft_str.c_str());
     satellite_model.load(satellite_str.c_str());
-    asteroid1_model.load(asteroid1_str.c_str());
-    asteroid2_model.load(asteroid2_str.c_str());
-    asteroid3_model.load(asteroid3_str.c_str());
     asteroid4_model.load(asteroid4_str.c_str());
     asteroid5_model.load(asteroid5_str.c_str());
     asteroid6_model.load(asteroid6_str.c_str());
@@ -136,18 +147,6 @@ void init()
     satellite_x = satellite_model.pos_x;
     satellite_y = satellite_model.pos_y;
     satellite_z = satellite_model.pos_z - 1.0f;
-
-    asteroid1_x = asteroid1_model.pos_x;
-    asteroid1_y = asteroid1_model.pos_y;
-    asteroid1_z = asteroid1_model.pos_z - 1.0f;
-
-    asteroid2_x = asteroid2_model.pos_x;
-    asteroid2_y = asteroid2_model.pos_y;
-    asteroid2_z = asteroid2_model.pos_z - 1.0f;
-
-    asteroid3_x = asteroid3_model.pos_x;
-    asteroid3_y = asteroid3_model.pos_y;
-    asteroid3_z = asteroid3_model.pos_z - 1.0f;
 
     asteroid4_x = asteroid4_model.pos_x;
     asteroid4_y = asteroid4_model.pos_y;
@@ -185,6 +184,16 @@ void display()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
+    if (!check())
+    {
+        // std::cout<<"yayy\n";
+        collision_menu = true;
+        start = false;
+        spacecraft_x = spacecraft_x_old;
+        spacecraft_y = spacecraft_y_old;
+        spacecraft_z = spacecraft_z_old;
+    }
+
     if (!show_menu && !collision_menu)
     {
         glPushMatrix();
@@ -203,7 +212,7 @@ void display()
         glTranslatef(0, ast_y, 0);
 
         glPushMatrix();
-        glTranslatef(asteroid6_x, asteroid6_y+10, asteroid6_z - 10);
+        glTranslatef(asteroid6_x, asteroid6_y + 10, asteroid6_z - 10);
         asteroid6_model.draw();
         glPopMatrix();
 
@@ -251,35 +260,6 @@ void display()
 
         glPushMatrix();
 
-        // glDisable(GL_LIGHTING);
-        // // glColor3f(0.0,1.0,0.0);
-        // // glBegin(GL_QUADS);
-        // // glVertex3f(0.03, -0.68f, -2.0);
-        // // glVertex3f(-0.06, -0.68f, -2.0);
-        // // glVertex3f(-0.06, -0.78f, -2.0);
-        // // glVertex3f(0.03, -0.78f, -2.0);
-        // // glEnd();
-        // glColor3f(1,0,0);
-        // for(int i=0;i<100;i++){
-        //     glBegin(GL_POINTS);
-        //         float a = -0.04f - 0.03f * ((float)(rand()) / RAND_MAX);
-        //         float b = -0.775f + 0.1f * ((float)(rand()) / RAND_MAX);
-        //         // float c = -2.0f - 1.0f * ((float)(rand()) / RAND_MAX);
-        //         glVertex3f(a,b,-2.0f);
-        //     glEnd();
-        // }
-        // glColor3f(1,1,0);
-        // for(int i=0;i<100;i++){
-        //     glBegin(GL_POINTS);
-        //         float a = -0.04f - 0.03f * ((float)(rand()) / RAND_MAX);
-        //         float b = -0.775f + 0.1f * ((float)(rand()) / RAND_MAX);
-        //         // float c = -2.0f - 1.0f * ((float)(rand()) / RAND_MAX);
-        //         glVertex3f(a,b,-2.0f);
-        //     glEnd();
-        // }
-        // glEnable(GL_LIGHTING);
-
-        // std::cout<<spacecraft_x<<" "<<spacecraft_y<<" "<<spacecraft_z<<" \n";
         glTranslatef(spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3);
         glRotatef(angle_x, 1.0f, 0.0f, 0.0f);
         glRotatef(angle_y, 0.0f, 1.0f, 0.0f);
@@ -552,6 +532,11 @@ void display()
 
 void timer(int value)
 {
+    trans_y -= 0.01;
+
+    if (trans_y < -8)
+        trans_y += 20;
+    
     if (start)
     {
         distance_covered += 10.0;
@@ -560,16 +545,11 @@ void timer(int value)
             score += 1;
         }
 
-        trans_y -= 0.01;
-
-        if (trans_y < -8)
-            trans_y += 20;
-
         ast_y -= (level_speed);
         if (ast_y < -100)
         {
             ast_y = 0;
-            level_speed += 0.005;
+            level_speed += 0.01;
             level++;
         }
     }
@@ -589,27 +569,23 @@ void specialKeyFunc(int key, int x, int y)
     {
         if (key == GLUT_KEY_DOWN)
         {
-            spacecraft_y -= 0.1;
-            if (spacecraft_y < -10.5)
-                spacecraft_y = -8.5;
+            if (spacecraft_y > -1.737)
+                spacecraft_y -= 0.1;
         }
         else if (key == GLUT_KEY_UP)
         {
-            spacecraft_y += 0.1;
-            // if (pos_y > 0.9)
-            //     pos_y = -0.9;
+            if (spacecraft_y < 16.2629)
+                spacecraft_y += 0.1;
         }
         else if (key == GLUT_KEY_RIGHT)
         {
-            spacecraft_x += 0.1;
-            // if (pos_x > 0.4)
-            //     pos_x = 0.3;
+            if (spacecraft_x < 8.71)
+                spacecraft_x += 0.15;
         }
         else if (key == GLUT_KEY_LEFT)
         {
-            spacecraft_x -= 0.1;
-            // if (pos_x < -1.4)
-            //     pos_x = 0.3;
+            if (spacecraft_x > -9.79)
+                spacecraft_x -= 0.15;
         }
 
         glutPostRedisplay();
@@ -649,7 +625,7 @@ void mouse(int button, int state, int x, int y)
                 distance_covered = 0;
                 start = true;
                 ast_y = 0;
-                level_speed = 0.02;
+                level_speed = 0.04;
                 level = 1;
 
                 glutPostRedisplay();
@@ -700,7 +676,7 @@ void mouse(int button, int state, int x, int y)
         // Check if the left mouse button was pressed and released
         if (button == GLUT_LEFT_BUTTON && state == GLUT_UP)
         {
-            if (x >= 380 && x <= 620 && y >= 580 && y <= 625)
+            if (x >= 379 && x <= 622 && y >= 560 && y <= 625)
             {
                 show_menu = true;
                 collision_menu = false;
@@ -861,7 +837,7 @@ int main(int argc, char **argv)
     // glutSetOption(GLUT_MULTISAMPLE, 8);
     glutInitWindowPosition(50, 50);
     glutInitWindowSize(1000, 1000);
-    glutCreateWindow("Load Model");
+    glutCreateWindow("Space Game");
     init();
     glutDisplayFunc(display);
     glutMouseFunc(mouse);
