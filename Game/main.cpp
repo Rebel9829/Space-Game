@@ -1,7 +1,10 @@
-#include "main.h"
+#include "../Library/main.h"
+#include "../Library/soil/SOIL.h"
 #include <bits/stdc++.h>
 
-std::string spacecraft_str = "Models/X-WING1.obj";
+std::string spacecraft1_str = "Models/X-WING1.obj";
+std::string spacecraft2_str = "Models/spacecraft2.obj";
+std::string spacecraft3_str = "Models/spacecraft3.obj";
 std::string satellite_str = "Models/satellite.obj";
 std::string asteroid4_str = "Models/as4.obj";
 std::string asteroid5_str = "Models/as5.obj";
@@ -11,10 +14,15 @@ std::string asteroid8_str = "Models/as8.obj";
 std::string asteroid9_str = "Models/as9.obj";
 std::string asteroid10_str = "Models/as10.obj";
 
-GLfloat light_pos[] = {-10.0f, 10.0f, 100.00f, 1.0f};
+GLfloat light_pos[] = {0.0f, 0.0f, 0.0f, 10.0f};
 
-float spacecraft_x, spacecraft_y, spacecraft_z, trans_y, ast_y;
-float spacecraft_x_old, spacecraft_y_old, spacecraft_z_old;
+float spacecraft_x, spacecraft_y, spacecraft_z;
+float spacecraft1_x, spacecraft1_y, spacecraft1_z, trans_y, ast_y;
+float spacecraft2_x, spacecraft2_y, spacecraft2_z;
+float spacecraft3_x, spacecraft3_y, spacecraft3_z;
+float spacecraft1_x_old, spacecraft1_y_old, spacecraft1_z_old;
+float spacecraft2_x_old, spacecraft2_y_old, spacecraft2_z_old;
+float spacecraft3_x_old, spacecraft3_y_old, spacecraft3_z_old;
 float satellite_x, satellite_y, satellite_z;
 float asteroid4_x, asteroid4_y, asteroid4_z;
 float asteroid5_x, asteroid5_y, asteroid5_z;
@@ -30,7 +38,7 @@ float ast_pos = 1000.0;
 
 int x_old = 0, y_old = 0, x_satellite_old = 0, y_satellite_old = 0;
 int level = 1;
-float level_speed = 0.04;
+float level_speed = 0.08;
 int current_scroll = 5;
 float distance_covered = 0;
 int score = 0;
@@ -38,12 +46,22 @@ float zoom_per_scroll = 0;
 
 bool is_holding_mouse = false;
 bool is_updated = false;
-bool start = true;
+bool start = false;
 bool space_pressed = false;
 bool show_menu = true;
 bool collision_menu = false;
+bool spacecraft_menu = false;
+bool craft1 = true, craft2 = false, craft3 = false;
+float angle_craft1_x = 0.0f, angle_craft1_y = 90.0f;
+float angle_craft2_x = 0.0f, angle_craft2_y = 90.0f;
+float angle_craft3_x = 0.0f, angle_craft3_y = 90.0f;
+int craft1_x = 0, craft1_y = 0;
+int craft2_x = 0, craft2_y = 0;
+int craft3_x = 0, craft3_y = 0;
 
-Model spacecraft_model;
+Model spacecraft1_model;
+Model spacecraft2_model;
+Model spacecraft3_model;
 Model satellite_model;
 Model asteroid4_model;
 Model asteroid5_model;
@@ -53,6 +71,26 @@ Model asteroid8_model;
 Model asteroid9_model;
 Model asteroid10_model;
 Model particle_model;
+
+GLuint texture;
+
+void LoadGLTextures()
+{
+    // texture
+    texture = SOIL_load_OGL_texture("spacecraft.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
+
+    // Typical Texture Generation Using Data From The Bitmap
+    // glBindTexture(GL_TEXTURE_2D, texture[0]);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // glEnable(GL_TEXTURE_2D);                           // Enable Texture Mapping ( NEW )
+    // glShadeModel(GL_SMOOTH);                           // Enable Smooth Shading
+    // glClearColor(1.0f, 1.0f, 1.0f, 1.0f);              // Black Background
+    // glClearDepth(1.0f);                                // Depth Buffer Setup
+    // glEnable(GL_DEPTH_TEST);                           // Enables Depth Testing
+    // glDepthFunc(GL_LEQUAL);                            // The Type Of Depth Testing To Do
+    // glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST); // Really Nice Perspective Calculations
+}
 
 float distance(float x1, float y1, float z1, float x2, float y2, float z2)
 {
@@ -64,18 +102,48 @@ float distance(float x1, float y1, float z1, float x2, float y2, float z2)
 }
 bool check()
 {
+    if (!start)
+    {
+        return true;
+    }
     bool ans = true;
-    ans = ans and (distance(asteroid6_x, asteroid6_y + 10 + ast_y, asteroid6_z - 10, spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3) > 35);
-    ans = ans and (distance(asteroid9_x + 5, asteroid9_y + 20 + ast_y, asteroid9_z - 4, spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3) > 35);
-    ans = ans and (distance(asteroid4_x - 10, asteroid4_y + 30 + ast_y, asteroid4_z - 14, spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3) > 35);
-    ans = ans and (distance(asteroid5_x - 5, asteroid5_y + 40 + ast_y, asteroid5_z - 10, spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3) > 35);
-    ans = ans and (distance(asteroid6_x + 9, asteroid6_y + 50 + ast_y, asteroid6_z - 10, spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3) > 35);
-    ans = ans and (distance(asteroid10_x - 5, asteroid10_y + 60 + ast_y, asteroid10_z - 4, spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3) > 35);
-    ans = ans and (distance(asteroid8_x - 8, asteroid8_y + 70 + ast_y, asteroid8_z - 12, spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3) > 35);
-    ans = ans and (distance(asteroid5_x + 5, asteroid5_y + 80 + ast_y, asteroid5_z - 10, spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3) > 35);
-    ans = ans and (distance(asteroid7_x - 5, asteroid7_y + 90 + ast_y, asteroid7_z - 15, spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3) > 35);
 
-    // std::cout<<ans<<"\n";
+    if (craft1)
+    {
+        ans = ans and (distance(asteroid6_x, asteroid6_y + 10 + ast_y, asteroid6_z - 10, spacecraft1_x, spacecraft1_y - 8.0, spacecraft1_z + 3) > 35);
+        ans = ans and (distance(asteroid9_x + 5, asteroid9_y + 20 + ast_y, asteroid9_z - 4, spacecraft1_x, spacecraft1_y - 8.0, spacecraft1_z + 3) > 35);
+        ans = ans and (distance(asteroid4_x - 10, asteroid4_y + 30 + ast_y, asteroid4_z - 14, spacecraft1_x, spacecraft1_y - 8.0, spacecraft1_z + 3) > 28);
+        ans = ans and (distance(asteroid5_x - 5, asteroid5_y + 40 + ast_y, asteroid5_z - 10, spacecraft1_x, spacecraft1_y - 8.0, spacecraft1_z + 3) > 25);
+        ans = ans and (distance(asteroid6_x + 9, asteroid6_y + 50 + ast_y, asteroid6_z - 10, spacecraft1_x, spacecraft1_y - 8.0, spacecraft1_z + 3) > 25);
+        ans = ans and (distance(asteroid10_x - 5, asteroid10_y + 60 + ast_y, asteroid10_z - 4, spacecraft1_x, spacecraft1_y - 8.0, spacecraft1_z + 3) > 25);
+        ans = ans and (distance(asteroid8_x - 8, asteroid8_y + 70 + ast_y, asteroid8_z - 12, spacecraft1_x, spacecraft1_y - 8.0, spacecraft1_z + 3) > 25);
+        ans = ans and (distance(asteroid5_x + 5, asteroid5_y + 80 + ast_y, asteroid5_z - 10, spacecraft1_x, spacecraft1_y - 8.0, spacecraft1_z + 3) > 25);
+        ans = ans and (distance(asteroid7_x - 5, asteroid7_y + 90 + ast_y, asteroid7_z - 15, spacecraft1_x, spacecraft1_y - 8.0, spacecraft1_z + 3) > 25);
+    }
+    else if (craft2)
+    {
+        ans = ans and (distance(asteroid6_x, asteroid6_y + 10 + ast_y, asteroid6_z - 10, spacecraft2_x, spacecraft2_y - 8.0, spacecraft2_z + 3) > 40);
+        ans = ans and (distance(asteroid9_x + 5, asteroid9_y + 20 + ast_y, asteroid9_z - 4, spacecraft2_x, spacecraft2_y - 8.0, spacecraft2_z + 3) > 35);
+        ans = ans and (distance(asteroid4_x - 10, asteroid4_y + 30 + ast_y, asteroid4_z - 14, spacecraft2_x-9.4, spacecraft2_y - 11.0, spacecraft2_z -9) > 28);
+        ans = ans and (distance(asteroid5_x - 5, asteroid5_y + 40 + ast_y, asteroid5_z - 10, spacecraft2_x, spacecraft2_y - 8.0, spacecraft2_z + 3) > 25);
+        ans = ans and (distance(asteroid6_x + 9, asteroid6_y + 50 + ast_y, asteroid6_z - 10, spacecraft2_x, spacecraft2_y - 8.0, spacecraft2_z + 3) > 25);
+        ans = ans and (distance(asteroid10_x - 5, asteroid10_y + 60 + ast_y, asteroid10_z - 4, spacecraft2_x, spacecraft2_y - 8.0, spacecraft2_z + 3) > 25);
+        ans = ans and (distance(asteroid8_x - 8, asteroid8_y + 70 + ast_y, asteroid8_z - 12, spacecraft2_x, spacecraft2_y - 8.0, spacecraft2_z + 3) > 25);
+        ans = ans and (distance(asteroid5_x + 5, asteroid5_y + 80 + ast_y, asteroid5_z - 10, spacecraft2_x, spacecraft2_y - 8.0, spacecraft2_z + 3) > 25);
+        ans = ans and (distance(asteroid7_x - 5, asteroid7_y + 90 + ast_y, asteroid7_z - 15, spacecraft2_x, spacecraft2_y - 8.0, spacecraft2_z + 3) > 25);
+    }
+    else if (craft3)
+    {
+        ans = ans and (distance(asteroid6_x, asteroid6_y + 10 + ast_y, asteroid6_z - 10, spacecraft3_x, spacecraft3_y - 8.0, spacecraft3_z + 3) > 35);
+        ans = ans and (distance(asteroid9_x + 5, asteroid9_y + 20 + ast_y, asteroid9_z - 4, spacecraft3_x, spacecraft3_y - 8.0, spacecraft3_z + 3) > 35);
+        ans = ans and (distance(asteroid4_x - 10, asteroid4_y + 30 + ast_y, asteroid4_z - 14, spacecraft3_x, spacecraft3_y - 8.0, spacecraft3_z + 3) > 28);
+        ans = ans and (distance(asteroid5_x - 5, asteroid5_y + 40 + ast_y, asteroid5_z - 10, spacecraft3_x, spacecraft3_y - 8.0, spacecraft3_z + 3) > 25);
+        ans = ans and (distance(asteroid6_x + 9, asteroid6_y + 50 + ast_y, asteroid6_z - 10, spacecraft3_x, spacecraft3_y - 8.0, spacecraft3_z + 3) > 25);
+        ans = ans and (distance(asteroid10_x - 5, asteroid10_y + 60 + ast_y, asteroid10_z - 4, spacecraft3_x, spacecraft3_y - 8.0, spacecraft3_z + 3) > 25);
+        ans = ans and (distance(asteroid8_x - 8, asteroid8_y + 70 + ast_y, asteroid8_z - 12, spacecraft3_x, spacecraft3_y - 8.0, spacecraft3_z + 3) > 25);
+        ans = ans and (distance(asteroid5_x + 5, asteroid5_y + 80 + ast_y, asteroid5_z - 10, spacecraft3_x, spacecraft3_y - 8.0, spacecraft3_z + 3) > 25);
+        ans = ans and (distance(asteroid7_x - 5, asteroid7_y + 90 + ast_y, asteroid7_z - 15, spacecraft3_x, spacecraft3_y - 8.0, spacecraft3_z + 3) > 25);
+    }
 
     return ans;
 }
@@ -102,15 +170,16 @@ void background()
         float c = randomFloat();
         glVertex3f(a, b, c);
         glEnd();
-        // std::cout<<a<<" "<<b<<" "<<c<<"\n";
     }
 }
 
 void init()
 {
+    LoadGLTextures();
     // glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
     glLightfv(GL_LIGHT0, GL_POSITION, light_pos);
+    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -126,7 +195,9 @@ void init()
     glEnable(GL_TEXTURE_2D);
     glEnable(GL_DEPTH_TEST);
 
-    spacecraft_model.load(spacecraft_str.c_str());
+    spacecraft1_model.load(spacecraft1_str.c_str());
+    spacecraft2_model.load(spacecraft2_str.c_str());
+    spacecraft3_model.load(spacecraft3_str.c_str());
     satellite_model.load(satellite_str.c_str());
     asteroid4_model.load(asteroid4_str.c_str());
     asteroid5_model.load(asteroid5_str.c_str());
@@ -136,13 +207,31 @@ void init()
     asteroid9_model.load(asteroid9_str.c_str());
     asteroid10_model.load(asteroid10_str.c_str());
 
-    spacecraft_x = spacecraft_model.pos_x;
-    spacecraft_y = spacecraft_model.pos_y;
-    spacecraft_z = spacecraft_model.pos_z - 1.0f;
+    spacecraft1_x = spacecraft1_model.pos_x;
+    spacecraft1_y = spacecraft1_model.pos_y;
+    spacecraft1_z = spacecraft1_model.pos_z - 1.0f;
 
-    spacecraft_x_old = spacecraft_x;
-    spacecraft_y_old = spacecraft_y;
-    spacecraft_z_old = spacecraft_z;
+    spacecraft2_x = spacecraft2_model.pos_x;
+    spacecraft2_y = spacecraft2_model.pos_y;
+    spacecraft2_z = spacecraft2_model.pos_z - 1.0f;
+
+    // std::cout<<spacecraft3_x<<" "<<spacecraft3_y<<" "<<spacecraft3_z<<"\n";
+
+    spacecraft3_x = spacecraft3_model.pos_x;
+    spacecraft3_y = spacecraft3_model.pos_y;
+    spacecraft3_z = spacecraft3_model.pos_z - 1.0f;
+
+    spacecraft1_x_old = spacecraft1_x;
+    spacecraft1_y_old = spacecraft1_y;
+    spacecraft1_z_old = spacecraft1_z;
+
+    spacecraft2_x_old = spacecraft2_x;
+    spacecraft2_y_old = spacecraft2_y;
+    spacecraft2_z_old = spacecraft2_z;
+
+    spacecraft3_x_old = spacecraft3_x;
+    spacecraft3_y_old = spacecraft3_y;
+    spacecraft3_z_old = spacecraft3_z;
 
     satellite_x = satellite_model.pos_x;
     satellite_y = satellite_model.pos_y;
@@ -176,7 +265,32 @@ void init()
     asteroid10_y = asteroid10_model.pos_y;
     asteroid10_z = asteroid10_model.pos_z - 1.0f;
 
-    zoom_per_scroll = -spacecraft_model.pos_z / 10.0f;
+    zoom_per_scroll = -spacecraft1_model.pos_z / 10.0f;
+
+    // std::cout << asteroid4_x << " " << asteroid4_y << " " << asteroid4_z << "\n";
+    // std::cout << spacecraft2_x << " " << spacecraft2_y << " " << spacecraft2_z << "\n";
+}
+
+// Function for menuBackground
+void menuBack()
+{
+    glPushMatrix();
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTranslatef(0, 0, -30);
+    glBegin(GL_QUADS);
+    glTexCoord2f(0.0f, 0.0f);
+    float xmin = 5.5, xmax = 10.5, ymin = 0.0, ymax = 5.5;
+    glVertex3f(xmin, ymin, -20.0);
+    glTexCoord2f(0.0f, 1.0f);
+    glVertex3f(xmin, ymax, -20.0);
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex3f(xmax, ymax, -20.0);
+    glTexCoord2f(1.0f, 0.0f);
+    glVertex3f(xmax, ymin, -20.0);
+    glEnd();
+    glDisable(GL_TEXTURE_2D);
+    glPopMatrix();
 }
 
 void display()
@@ -184,18 +298,15 @@ void display()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
-    if (!check())
+    if (!show_menu && !collision_menu && !spacecraft_menu)
     {
-        // std::cout<<"yayy\n";
-        collision_menu = true;
-        start = false;
-        spacecraft_x = spacecraft_x_old;
-        spacecraft_y = spacecraft_y_old;
-        spacecraft_z = spacecraft_z_old;
-    }
-
-    if (!show_menu && !collision_menu)
-    {
+        if (!check())
+        {
+            // std::cout<<"yayy\n";
+            collision_menu = true;
+            start = false;
+            goto jump;
+        }
         glPushMatrix();
         glDisable(GL_LIGHTING);
         glDepthMask(GL_FALSE); // disable depth writes
@@ -260,11 +371,32 @@ void display()
 
         glPushMatrix();
 
-        glTranslatef(spacecraft_x, spacecraft_y - 8.0, spacecraft_z + 3);
-        glRotatef(angle_x, 1.0f, 0.0f, 0.0f);
-        glRotatef(angle_y, 0.0f, 1.0f, 0.0f);
-        glRotatef(90, 0, 0, 1);
-        spacecraft_model.draw();
+        if (craft1)
+        {
+            glTranslatef(spacecraft1_x, spacecraft1_y - 8.0, spacecraft1_z + 3);
+            glRotatef(angle_x, 1.0f, 0.0f, 0.0f);
+            glRotatef(angle_y, 0.0f, 1.0f, 0.0f);
+            glRotatef(90, 0, 0, 1);
+            spacecraft1_model.draw();
+        }
+        else if (craft2)
+        {
+            glTranslatef(spacecraft2_x, spacecraft2_y - 8.15, spacecraft2_z - 10);
+            glRotatef(angle_x, 1.0f, 0.0f, 0.0f);
+            glRotatef(angle_y, 0.0f, 1.0f, 0.0f);
+            glRotatef(90, 0, 0, 1);
+            spacecraft2_model.draw();
+        }
+        else if (craft3)
+        {
+            glTranslatef(spacecraft3_x, spacecraft3_y - 8.0, spacecraft3_z);
+            glRotatef(angle_x, 1.0f, 0.0f, 0.0f);
+            glRotatef(angle_y, 0.0f, 1.0f, 0.0f);
+            glRotatef(90, 0, 0, 1);
+            glRotatef(90, 0, 1, 0);
+            spacecraft3_model.draw();
+        }
+
         glPopMatrix();
 
         if (space_pressed)
@@ -333,7 +465,7 @@ void display()
         glEnable(GL_LIGHTING);
         glPopMatrix();
     }
-    else if (show_menu && !collision_menu)
+    else if (show_menu && !collision_menu && !spacecraft_menu)
     {
         glPushMatrix();
         glDisable(GL_LIGHTING);
@@ -404,9 +536,10 @@ void display()
         }
 
         glEnable(GL_LIGHTING);
+        menuBack();
         glPopMatrix();
     }
-    else
+    else if (collision_menu && !spacecraft_menu)
     {
         glPushMatrix();
         glDisable(GL_LIGHTING);
@@ -494,7 +627,7 @@ void display()
         glVertex3f(-0.2, -0.4, -2.0);
         glEnd();
 
-        // Draw the quit button
+        // Draw the play button
         glColor3f(1.0f, 0.0f, 0.0f);
         glRasterPos3f(-0.055, -0.18, -1.0);
         text = "PLAY AGAIN";
@@ -525,7 +658,160 @@ void display()
         glEnable(GL_LIGHTING);
         glPopMatrix();
     }
+    else
+    {
+        glPushMatrix();
+        glDisable(GL_LIGHTING);
+        glDepthMask(GL_FALSE); // disable depth writes
 
+        glPushMatrix();
+        // Draw the title
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glRasterPos3f(-0.2, 0.6, -2.0);
+        std::string text = "SELECT THE SPACECRAFT";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+        glPopMatrix();
+
+        glTranslatef(0, trans_y, 0);
+        background();
+
+        glDepthMask(GL_TRUE); // enable depth writes
+        glEnable(GL_LIGHTING);
+        glPopMatrix();
+
+        if (craft1)
+        {
+            glPushMatrix();
+
+            glTranslatef(spacecraft1_x + 0.8, spacecraft1_y + 0.5, spacecraft1_z + 12);
+            glRotatef(angle_craft1_x, 1.0f, 0.0f, 0.0f);
+            glRotatef(angle_craft1_y, 0.0f, 1.0f, 0.0f);
+            glRotatef(90, 0, 0, 1);
+            spacecraft1_model.draw();
+            glPopMatrix();
+        }
+        else if (craft2)
+        {
+            glPushMatrix();
+
+            glTranslatef(spacecraft2_x + 0.5, spacecraft2_y + 2, spacecraft2_z + 2);
+            glRotatef(angle_craft2_x, 1.0f, 0.0f, 0.0f);
+            glRotatef(angle_craft2_y, 0.0f, 1.0f, 0.0f);
+            glRotatef(45, 0, 0, 1);
+            // glRotatef(45,1,0,0);
+            spacecraft2_model.draw();
+            glPopMatrix();
+        }
+        else if (craft3)
+        {
+            glPushMatrix();
+
+            glTranslatef(spacecraft3_x + 0.5, spacecraft3_y + 1.5, spacecraft3_z + 12);
+            glRotatef(angle_craft3_x, 1.0f, 0.0f, 0.0f);
+            glRotatef(angle_craft3_y, 0.0f, 1.0f, 0.0f);
+            glRotatef(90, 0, 0, 1);
+            glRotatef(90, 0, 1, 0);
+            spacecraft3_model.draw();
+            glPopMatrix();
+        }
+
+        glPushMatrix();
+        glDisable(GL_LIGHTING);
+
+        // Draw the Next button
+        glColor3f(0.137, 0.51, 0.631);
+        glBegin(GL_QUADS);
+        glVertex3f(0.6, 0.38, -2.0);
+        glVertex3f(0.66, 0.38, -2.0);
+        glVertex3f(0.66, 0.0, -2.0);
+        glVertex3f(0.6, 0.0, -2.0);
+        glEnd();
+
+        // Text the Next button
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glRasterPos3f(0.31, 0.097, -1.0);
+        text = ">";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+
+        // Draw the Prev button
+        glColor3f(0.137, 0.51, 0.631);
+        glBegin(GL_QUADS);
+        glVertex3f(-0.6, 0.38, -2.0);
+        glVertex3f(-0.66, 0.38, -2.0);
+        glVertex3f(-0.66, 0.0, -2.0);
+        glVertex3f(-0.6, 0.0, -2.0);
+        glEnd();
+
+        // Text the Prev button
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glRasterPos3f(-0.32, 0.097, -1.0);
+        text = "<";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+
+        // Text the Name
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glRasterPos3f(-0.04, -0.27, -2.0);
+
+        if(craft1){
+            text = "X-WING";
+        } else if(craft2){
+            text = "UFO";
+        } else if(craft3){
+            text = "SKY-BLADE";
+        }
+        
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+
+        glColor3f(0.137, 0.51, 0.631);
+        glBegin(GL_QUADS);
+        glVertex3f(-0.45, -0.5, -2.0);
+        glVertex3f(-0.15, -0.5, -2.0);
+        glVertex3f(-0.15, -0.6, -2.0);
+        glVertex3f(-0.45, -0.6, -2.0);
+        glEnd();
+
+        // Draw the quit button
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glRasterPos3f(-0.18, -0.28, -1.0);
+        text = "HOME";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+
+        glColor3f(0.137, 0.51, 0.631);
+        glBegin(GL_QUADS);
+        glVertex3f(0.45, -0.5, -2.0);
+        glVertex3f(0.15, -0.5, -2.0);
+        glVertex3f(0.15, -0.6, -2.0);
+        glVertex3f(0.45, -0.6, -2.0);
+        glEnd();
+
+        // Draw the quit button
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glRasterPos3f(0.115, -0.28, -1.0);
+        text = "SELECT";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+
+        glEnable(GL_LIGHTING);
+        glPopMatrix();
+    }
+jump:
     glFlush();
     glutSwapBuffers();
 }
@@ -536,7 +822,7 @@ void timer(int value)
 
     if (trans_y < -8)
         trans_y += 20;
-    
+
     if (start)
     {
         distance_covered += 10.0;
@@ -549,7 +835,7 @@ void timer(int value)
         if (ast_y < -100)
         {
             ast_y = 0;
-            level_speed += 0.01;
+            level_speed += 0.04;
             level++;
         }
     }
@@ -565,36 +851,160 @@ void timer(int value)
 
 void specialKeyFunc(int key, int x, int y)
 {
-    if (!show_menu && !space_pressed && !collision_menu)
+    if (!show_menu && !space_pressed && !collision_menu && !spacecraft_menu)
     {
-        if (key == GLUT_KEY_DOWN)
+        if (craft1)
         {
-            if (spacecraft_y > -1.737)
-                spacecraft_y -= 0.1;
+            if (key == GLUT_KEY_DOWN)
+            {
+                if (spacecraft1_y > -1.737)
+                    spacecraft1_y -= 0.1;
+            }
+            else if (key == GLUT_KEY_UP)
+            {
+                if (spacecraft1_y < 16.2629)
+                    spacecraft1_y += 0.1;
+            }
+            else if (key == GLUT_KEY_RIGHT)
+            {
+                if (spacecraft1_x < 8.71)
+                    spacecraft1_x += 0.15;
+            }
+            else if (key == GLUT_KEY_LEFT)
+            {
+                if (spacecraft1_x > -9.79)
+                    spacecraft1_x -= 0.15;
+            }
         }
-        else if (key == GLUT_KEY_UP)
+        else if (craft2)
         {
-            if (spacecraft_y < 16.2629)
-                spacecraft_y += 0.1;
+            if (key == GLUT_KEY_DOWN)
+            {
+                if (spacecraft2_y > -1.6)
+                    spacecraft2_y -= 0.1;
+            }
+            else if (key == GLUT_KEY_UP)
+            {
+                if (spacecraft2_y < 17.38)
+                    spacecraft2_y += 0.1;
+            }
+            else if (key == GLUT_KEY_RIGHT)
+            {
+                if (spacecraft2_x < 8.71)
+                    spacecraft2_x += 0.15;
+            }
+            else if (key == GLUT_KEY_LEFT)
+            {
+                if (spacecraft2_x > -9.79)
+                    spacecraft2_x -= 0.15;
+            }
         }
-        else if (key == GLUT_KEY_RIGHT)
+        else if (craft3)
         {
-            if (spacecraft_x < 8.71)
-                spacecraft_x += 0.15;
-        }
-        else if (key == GLUT_KEY_LEFT)
-        {
-            if (spacecraft_x > -9.79)
-                spacecraft_x -= 0.15;
+            if (key == GLUT_KEY_DOWN)
+            {
+                if (spacecraft3_y > -1.737)
+                    spacecraft3_y -= 0.1;
+            }
+            else if (key == GLUT_KEY_UP)
+            {
+                if (spacecraft3_y < 16.2629)
+                    spacecraft3_y += 0.1;
+            }
+            else if (key == GLUT_KEY_RIGHT)
+            {
+                if (spacecraft3_x < 8.71)
+                    spacecraft3_x += 0.15;
+            }
+            else if (key == GLUT_KEY_LEFT)
+            {
+                if (spacecraft3_x > -9.79)
+                    spacecraft3_x -= 0.15;
+            }
         }
 
         glutPostRedisplay();
+    }
+    else if (spacecraft_menu)
+    {
+        if (key == GLUT_KEY_RIGHT)
+        {
+            if (craft1)
+            {
+                craft1 = false;
+                craft2 = true;
+                angle_craft1_x = 0;
+                angle_craft1_y = 90;
+                angle_craft2_x = 0;
+                angle_craft2_y = 90;
+                angle_craft3_x = 0;
+                angle_craft3_y = 90;
+            }
+            else if (craft2)
+            {
+                craft2 = false;
+                craft3 = true;
+                angle_craft1_x = 0;
+                angle_craft1_y = 90;
+                angle_craft2_x = 0;
+                angle_craft2_y = 90;
+                angle_craft3_x = 0;
+                angle_craft3_y = 90;
+            }
+            else if (craft3)
+            {
+                craft3 = false;
+                craft1 = true;
+                angle_craft1_x = 0;
+                angle_craft1_y = 90;
+                angle_craft2_x = 0;
+                angle_craft2_y = 90;
+                angle_craft3_x = 0;
+                angle_craft3_y = 90;
+            }
+        }
+        else if (key == GLUT_KEY_LEFT)
+        {
+            if (craft1)
+            {
+                craft1 = false;
+                craft3 = true;
+                angle_craft1_x = 0;
+                angle_craft1_y = 90;
+                angle_craft2_x = 0;
+                angle_craft2_y = 90;
+                angle_craft3_x = 0;
+                angle_craft3_y = 90;
+            }
+            else if (craft2)
+            {
+                craft2 = false;
+                craft1 = true;
+                angle_craft1_x = 0;
+                angle_craft1_y = 90;
+                angle_craft2_x = 0;
+                angle_craft2_y = 90;
+                angle_craft3_x = 0;
+                angle_craft3_y = 90;
+            }
+            else if (craft3)
+            {
+                craft3 = false;
+                craft2 = true;
+                angle_craft1_x = 0;
+                angle_craft1_y = 90;
+                angle_craft2_x = 0;
+                angle_craft2_y = 90;
+                angle_craft3_x = 0;
+                angle_craft3_y = 90;
+            }
+        }
     }
 }
 
 void keyboard(unsigned char key, int x, int y)
 {
-    if (!show_menu && !collision_menu)
+    if (!show_menu && !collision_menu && !spacecraft_menu)
     {
         switch (key)
         {
@@ -602,14 +1012,86 @@ void keyboard(unsigned char key, int x, int y)
             start = !start;
             space_pressed = !space_pressed;
             break;
-            glutPostRedisplay();
         }
     }
+    else if (spacecraft_menu && !show_menu && !collision_menu)
+    {
+        if (key == 13)
+        {
+            spacecraft_menu = false;
+            trans_y = 0;
+            distance_covered = 0;
+            start = true;
+            ast_y = 0;
+            level_speed = 0.08;
+            level = 1;
+            score = 0;
+
+            angle_craft1_x = 0;
+            angle_craft1_y = 90;
+            angle_craft2_x = 0;
+            angle_craft2_y = 90;
+            angle_craft3_x = 0;
+            angle_craft3_y = 90;
+            craft1_x = 0;
+            craft1_y = 0;
+            craft2_x = 0;
+            craft2_y = 0;
+            craft3_x = 0;
+            craft3_y = 0;
+
+            if (craft1)
+            {
+                spacecraft1_x = spacecraft1_x_old;
+                spacecraft1_y = spacecraft1_y_old;
+            }
+            else if (craft2)
+            {
+                spacecraft2_x = spacecraft2_x_old;
+                spacecraft2_y = spacecraft2_y_old;
+            }
+            else if (craft3)
+            {
+                spacecraft3_x = spacecraft3_x_old;
+                spacecraft3_y = spacecraft3_y_old;
+            }
+        }
+        else if (key == 27)
+        {
+            spacecraft_menu = false;
+            show_menu = true;
+            angle_craft1_x = 0;
+            angle_craft1_y = 90;
+            angle_craft2_x = 0;
+            angle_craft2_y = 90;
+            angle_craft3_x = 0;
+            angle_craft3_y = 90;
+
+            craft1_x = 0;
+            craft1_y = 0;
+            craft2_x = 0;
+            craft2_y = 0;
+            craft3_x = 0;
+            craft3_y = 0;
+            craft1 = true;
+            craft2 = false;
+            craft3 = false;
+        }
+    }
+    else if (show_menu && !collision_menu && !spacecraft_menu)
+    {
+        if (key == 13)
+        {
+            show_menu = false;
+            spacecraft_menu = true;
+        }
+    }
+    glutPostRedisplay();
 }
 
 void mouse(int button, int state, int x, int y)
 {
-    if (show_menu && !collision_menu)
+    if (show_menu && !collision_menu && !spacecraft_menu)
     {
         is_updated = true;
 
@@ -621,14 +1103,7 @@ void mouse(int button, int state, int x, int y)
             {
                 // Call a function to start the game
                 show_menu = false;
-                trans_y = 0;
-                distance_covered = 0;
-                start = true;
-                ast_y = 0;
-                level_speed = 0.04;
-                level = 1;
-
-                glutPostRedisplay();
+                spacecraft_menu = true;
             }
             // Check if the mouse cursor is within the bounds of the quit button
             else if (x >= 380 && x <= 620 && y >= 800 && y <= 865)
@@ -648,28 +1123,8 @@ void mouse(int button, int state, int x, int y)
             else
                 is_holding_mouse = false;
         }
-        else if (state == GLUT_UP)
-        {
-            switch (button)
-            {
-            case 3:
-                if (current_scroll > 0)
-                {
-                    current_scroll--;
-                    satellite_z += zoom_per_scroll;
-                }
-                break;
-            case 4:
-                if (current_scroll < 15)
-                {
-                    current_scroll++;
-                    satellite_z -= zoom_per_scroll;
-                }
-                break;
-            }
-        }
     }
-    else if (collision_menu)
+    else if (collision_menu && !spacecraft_menu)
     {
         is_updated = true;
 
@@ -687,13 +1142,61 @@ void mouse(int button, int state, int x, int y)
             {
                 // Call a function to start the game
                 collision_menu = false;
-                trans_y = 0;
-                score = 0;
-                distance_covered = 0;
-                start = true;
-                ast_y = 0;
-                level_speed = 0.02;
-                level = 1;
+                spacecraft_menu = true;
+                if (craft1)
+                {
+                    spacecraft_menu = false;
+                    trans_y = 0;
+                    distance_covered = 0;
+                    start = true;
+                    ast_y = 0;
+                    level_speed = 0.08;
+                    level = 1;
+                    score = 0;
+
+                    angle_craft1_x = 0;
+                    angle_craft1_y = 90;
+                    angle_craft2_x = 0;
+                    angle_craft2_y = 90;
+                    angle_craft3_x = 0;
+                    angle_craft3_y = 90;
+                    craft1_x = 0;
+                    craft1_y = 0;
+                    craft2_x = 0;
+                    craft2_y = 0;
+                    craft3_x = 0;
+                    craft3_y = 0;
+
+                    if (craft1)
+                    {
+                        spacecraft1_x = spacecraft1_x_old;
+                        spacecraft1_y = spacecraft1_y_old;
+                    }
+                    else if (craft2)
+                    {
+                        spacecraft2_x = spacecraft2_x_old;
+                        spacecraft2_y = spacecraft2_y_old;
+                    }
+                    else if (craft3)
+                    {
+                        spacecraft3_x = spacecraft3_x_old;
+                        spacecraft3_y = spacecraft3_y_old;
+                    }
+                    spacecraft1_x = spacecraft1_x_old;
+                    spacecraft1_y = spacecraft1_y_old;
+                }
+                else if (craft2)
+                {
+                    spacecraft2_x = spacecraft2_x_old;
+                    spacecraft2_y = spacecraft2_y_old;
+                }
+                else if (craft3)
+                {
+                    spacecraft3_x = spacecraft3_x_old;
+                    spacecraft3_y = spacecraft3_y_old;
+                }
+                angle_x = -45.0f;
+                angle_y = 90.0f;
             }
             // Check if the mouse cursor is within the bounds of the quit button
             else if (x >= 380 && x <= 620 && y >= 800 && y <= 865)
@@ -701,10 +1204,10 @@ void mouse(int button, int state, int x, int y)
                 // Call a function to exit the program
                 exit(0);
             }
-            glutPostRedisplay();
+            // glutPostRedisplay();
         }
     }
-    else
+    else if (!spacecraft_menu)
     {
         is_updated = true;
         if (space_pressed)
@@ -735,12 +1238,38 @@ void mouse(int button, int state, int x, int y)
                     trans_y = 0;
                     distance_covered = 0;
                     score = 0;
+                    angle_craft1_x = 0;
+                    angle_craft1_y = 90;
+                    angle_craft2_x = 0;
+                    angle_craft2_y = 90;
+                    angle_craft3_x = 0;
+                    angle_craft3_y = 90;
 
-                    spacecraft_x = spacecraft_x_old;
-                    spacecraft_y = spacecraft_y_old;
-                    spacecraft_z = spacecraft_z_old;
+                    craft1_x = 0;
+                    craft1_y = 0;
+                    craft2_x = 0;
+                    craft2_y = 0;
+                    craft3_x = 0;
+                    craft3_y = 0;
+                    craft1 = true;
+                    craft2 = false;
+                    craft3 = false;
 
-                    glutPostRedisplay();
+                    if (craft1)
+                    {
+                        spacecraft1_x = spacecraft1_x_old;
+                        spacecraft1_y = spacecraft1_y_old;
+                    }
+                    else if (craft2)
+                    {
+                        spacecraft2_x = spacecraft2_x_old;
+                        spacecraft2_y = spacecraft2_y_old;
+                    }
+                    else if (craft3)
+                    {
+                        spacecraft3_x = spacecraft3_x_old;
+                        spacecraft3_y = spacecraft3_y_old;
+                    }
                 }
             }
         }
@@ -757,33 +1286,184 @@ void mouse(int button, int state, int x, int y)
                 else
                     is_holding_mouse = false;
             }
-            else if (state == GLUT_UP)
+        }
+    }
+    else
+    {
+        is_updated = true;
+
+        // Check if the left mouse button was pressed and released
+        if (button == GLUT_LEFT_BUTTON && state == GLUT_UP)
+        {
+            // std::cout<<x<<" "<<y<<"\n";
+            if (x >= 863 && x <= 901 && y >= 272 && y <= 500)
             {
-                switch (button)
+                if (craft1)
                 {
-                case 3:
-                    if (current_scroll > 0)
-                    {
-                        current_scroll--;
-                        spacecraft_z += zoom_per_scroll;
-                    }
-                    break;
-                case 4:
-                    if (current_scroll < 15)
-                    {
-                        current_scroll++;
-                        spacecraft_z -= zoom_per_scroll;
-                    }
-                    break;
+                    craft1 = false;
+                    craft2 = true;
+                    angle_craft1_x = 0;
+                    angle_craft1_y = 90;
+                    angle_craft2_x = 0;
+                    angle_craft2_y = 90;
+                    angle_craft3_x = 0;
+                    angle_craft3_y = 90;
+                }
+                else if (craft2)
+                {
+                    craft2 = false;
+                    craft3 = true;
+                    angle_craft1_x = 0;
+                    angle_craft1_y = 90;
+                    angle_craft2_x = 0;
+                    angle_craft2_y = 90;
+                    angle_craft3_x = 0;
+                    angle_craft3_y = 90;
+                }
+                else if (craft3)
+                {
+                    craft3 = false;
+                    craft1 = true;
+                    angle_craft1_x = 0;
+                    angle_craft1_y = 90;
+                    angle_craft2_x = 0;
+                    angle_craft2_y = 90;
+                    angle_craft3_x = 0;
+                    angle_craft3_y = 90;
+                }
+            }
+            else if (x >= 103 && x <= 138 && y >= 271 && y <= 501)
+            {
+                if (craft1)
+                {
+                    craft1 = false;
+                    craft3 = true;
+                    angle_craft1_x = 0;
+                    angle_craft1_y = 90;
+                    angle_craft2_x = 0;
+                    angle_craft2_y = 90;
+                    angle_craft3_x = 0;
+                    angle_craft3_y = 90;
+                }
+                else if (craft2)
+                {
+                    craft2 = false;
+                    craft1 = true;
+                    angle_craft1_x = 0;
+                    angle_craft1_y = 90;
+                    angle_craft2_x = 0;
+                    angle_craft2_y = 90;
+                    angle_craft3_x = 0;
+                    angle_craft3_y = 90;
+                }
+                else if (craft3)
+                {
+                    craft3 = false;
+                    craft2 = true;
+                    angle_craft1_x = 0;
+                    angle_craft1_y = 90;
+                    angle_craft2_x = 0;
+                    angle_craft2_y = 90;
+                    angle_craft3_x = 0;
+                    angle_craft3_y = 90;
+                }
+            }
+            else if (x >= 229 && x <= 409 && y >= 804 && y <= 862)
+            {
+                spacecraft_menu = false;
+                show_menu = true;
+                angle_craft1_x = 0;
+                angle_craft1_y = 90;
+                angle_craft2_x = 0;
+                angle_craft2_y = 90;
+                angle_craft3_x = 0;
+                angle_craft3_y = 90;
+
+                craft1_x = 0;
+                craft1_y = 0;
+                craft2_x = 0;
+                craft2_y = 0;
+                craft3_x = 0;
+                craft3_y = 0;
+                craft1 = true;
+                craft2 = false;
+                craft3 = false;
+
+            }
+            // Check if the mouse cursor is within the bounds of the quit button
+            else if (x >= 591 && x <= 772 && y >= 804 && y <= 864)
+            {
+                spacecraft_menu = false;
+                trans_y = 0;
+                distance_covered = 0;
+                start = true;
+                ast_y = 0;
+                level_speed = 0.08;
+                level = 1;
+                score = 0;
+
+                angle_craft1_x = 0;
+                angle_craft1_y = 90;
+                angle_craft2_x = 0;
+                angle_craft2_y = 90;
+                angle_craft3_x = 0;
+                angle_craft3_y = 90;
+                craft1_x = 0;
+                craft1_y = 0;
+                craft2_x = 0;
+                craft2_y = 0;
+                craft3_x = 0;
+                craft3_y = 0;
+
+                if (craft1)
+                {
+                    spacecraft1_x = spacecraft1_x_old;
+                    spacecraft1_y = spacecraft1_y_old;
+                }
+                else if (craft2)
+                {
+                    spacecraft2_x = spacecraft2_x_old;
+                    spacecraft2_y = spacecraft2_y_old;
+                }
+                else if (craft3)
+                {
+                    spacecraft3_x = spacecraft3_x_old;
+                    spacecraft3_y = spacecraft3_y_old;
                 }
             }
         }
+        if (button == GLUT_LEFT_BUTTON)
+        {
+            if (state == GLUT_DOWN)
+            {
+                if (craft1)
+                {
+                    craft1_x = x;
+                    craft1_y = y;
+                }
+                else if (craft2)
+                {
+                    craft2_x = x;
+                    craft2_y = y;
+                }
+                else if (craft3)
+                {
+                    craft3_x = x;
+                    craft3_y = y;
+                }
+
+                is_holding_mouse = true;
+            }
+            else
+                is_holding_mouse = false;
+        }
     }
+    glutPostRedisplay();
 }
 
 void motion(int x, int y)
 {
-    if (!show_menu && !space_pressed && !collision_menu)
+    if (!show_menu && !space_pressed && !collision_menu && !spacecraft_menu)
     {
         if (is_holding_mouse)
         {
@@ -804,7 +1484,7 @@ void motion(int x, int y)
                 angle_x = -90.0f;
         }
     }
-    else
+    else if (show_menu && !spacecraft_menu)
     {
         if (is_holding_mouse)
         {
@@ -823,6 +1503,62 @@ void motion(int x, int y)
                 angle_satellite_x = 90.0f;
             else if (angle_satellite_x < -90.0f)
                 angle_satellite_x = -90.0f;
+        }
+    }
+    else if (spacecraft_menu)
+    {
+        if (is_holding_mouse)
+        {
+            is_updated = true;
+
+            if (craft1)
+            {
+                angle_craft1_y += (x - craft1_x);
+                craft1_x = x;
+                if (angle_craft1_y > 360.0f)
+                    angle_craft1_y -= 360.0f;
+                else if (angle_craft1_y < 0.0f)
+                    angle_craft1_y += 360.0f;
+
+                angle_craft1_x += (y - craft1_y);
+                craft1_y = y;
+                if (angle_craft1_x > 90.0f)
+                    angle_craft1_x = 90.0f;
+                else if (angle_craft1_x < -90.0f)
+                    angle_craft1_x = -90.0f;
+            }
+            else if (craft2)
+            {
+                angle_craft2_y += (x - craft2_x);
+                craft2_x = x;
+                if (angle_craft2_y > 360.0f)
+                    angle_craft2_y -= 360.0f;
+                else if (angle_craft2_y < 0.0f)
+                    angle_craft2_y += 360.0f;
+
+                angle_craft2_x += (y - craft2_y);
+                craft2_y = y;
+                if (angle_craft2_x > 90.0f)
+                    angle_craft2_x = 90.0f;
+                else if (angle_craft2_x < -90.0f)
+                    angle_craft2_x = -90.0f;
+            }
+            else if (craft3)
+            {
+                angle_craft3_y += (x - craft3_x);
+                craft3_x = x;
+                if (angle_craft3_y > 360.0f)
+                    angle_craft3_y -= 360.0f;
+                else if (angle_craft3_y < 0.0f)
+                    angle_craft3_y += 360.0f;
+
+                angle_craft3_x += (y - craft3_y);
+                craft3_y = y;
+                if (angle_craft3_x > 90.0f)
+                    angle_craft3_x = 90.0f;
+                else if (angle_craft3_x < -90.0f)
+                    angle_craft3_x = -90.0f;
+            }
         }
     }
 }
