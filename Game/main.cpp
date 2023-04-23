@@ -1,7 +1,10 @@
+// Including libraries
 #include "../Library/main.h"
 #include "../Library/soil/SOIL.h"
 #include <bits/stdc++.h>
+#include <cstdlib>
 
+// ob models relative addresses
 std::string spacecraft1_str = "Models/X-WING1.obj";
 std::string spacecraft2_str = "Models/spacecraft2.obj";
 std::string spacecraft3_str = "Models/spacecraft3.obj";
@@ -14,8 +17,7 @@ std::string asteroid8_str = "Models/as8.obj";
 std::string asteroid9_str = "Models/as9.obj";
 std::string asteroid10_str = "Models/as10.obj";
 
-GLfloat light_pos[] = {0.0f, 0.0f, 0.0f, 10.0f};
-
+// Coordinates of centres of obj models would be stored in these
 float spacecraft_x, spacecraft_y, spacecraft_z;
 float spacecraft1_x, spacecraft1_y, spacecraft1_z, trans_y, ast_y;
 float spacecraft2_x, spacecraft2_y, spacecraft2_z;
@@ -32,6 +34,7 @@ float asteroid8_x, asteroid8_y, asteroid8_z;
 float asteroid9_x, asteroid9_y, asteroid9_z;
 float asteroid10_x, asteroid10_y, asteroid10_z;
 float particle_x, particle_y, particle_z;
+
 float angle_x = -45.0f, angle_y = 90.0f;
 float angle_satellite_x = 0.0f, angle_satellite_y = 45.0f;
 float ast_pos = 1000.0;
@@ -44,21 +47,34 @@ float distance_covered = 0;
 int score = 0;
 float zoom_per_scroll = 0;
 
-bool is_holding_mouse = false;
+bool closed = false;           // Indicates that the window has been closed (Quit) so that we can stop background music
+bool is_holding_mouse = false; // would be made true if user is holding mouse
 bool is_updated = false;
-bool start = false;
-bool space_pressed = false;
+bool start = false; // indicates whether to start the game and start calculating scores
+bool change_mode = true;
+bool space_pressed = false; // indicates whether space is pressed (indicates to pause or not)
+
+// following flags indicate if to show various menu
 bool show_menu = true;
+bool info_menu = false;
 bool collision_menu = false;
 bool spacecraft_menu = false;
+
+// indicates which model is selected by user
 bool craft1 = true, craft2 = false, craft3 = false;
+
+// rotation angles for different aircrafts
+float hor_speed = 0.2, ver_speed = 0.15;
 float angle_craft1_x = 0.0f, angle_craft1_y = 90.0f;
 float angle_craft2_x = 0.0f, angle_craft2_y = 90.0f;
 float angle_craft3_x = 0.0f, angle_craft3_y = 90.0f;
+GLfloat b_x = 0.0, b_y = 0.0, b_z = 0.0;
+GLfloat a_x = 0.25, a_y = 0.25, a_z = 0.25;
 int craft1_x = 0, craft1_y = 0;
 int craft2_x = 0, craft2_y = 0;
 int craft3_x = 0, craft3_y = 0;
 
+// Model class has been defined in main.h header file
 Model spacecraft1_model;
 Model spacecraft2_model;
 Model spacecraft3_model;
@@ -72,26 +88,27 @@ Model asteroid9_model;
 Model asteroid10_model;
 Model particle_model;
 
-GLuint texture;
+GLuint texture[5];
 
 void LoadGLTextures()
 {
     // texture
-    texture = SOIL_load_OGL_texture("spacecraft.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
+    texture[1] = SOIL_load_OGL_texture("./Images/1.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_INVERT_Y);
 
     // Typical Texture Generation Using Data From The Bitmap
-    // glBindTexture(GL_TEXTURE_2D, texture[0]);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // glEnable(GL_TEXTURE_2D);                           // Enable Texture Mapping ( NEW )
-    // glShadeModel(GL_SMOOTH);                           // Enable Smooth Shading
-    // glClearColor(1.0f, 1.0f, 1.0f, 1.0f);              // Black Background
-    // glClearDepth(1.0f);                                // Depth Buffer Setup
-    // glEnable(GL_DEPTH_TEST);                           // Enables Depth Testing
-    // glDepthFunc(GL_LEQUAL);                            // The Type Of Depth Testing To Do
-    // glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST); // Really Nice Perspective Calculations
+    glBindTexture(GL_TEXTURE_2D, texture[0]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glEnable(GL_TEXTURE_2D);                           // Enable Texture Mapping ( NEW )
+    glShadeModel(GL_SMOOTH);                           // Enable Smooth Shading
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);              // Black Background
+    glClearDepth(1.0f);                                // Depth Buffer Setup
+    glEnable(GL_DEPTH_TEST);                           // Enables Depth Testing
+    glDepthFunc(GL_LEQUAL);                            // The Type Of Depth Testing To Do
+    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST); // Really Nice Perspective Calculations
 }
 
+// Returns square of the euclidean distance
 float distance(float x1, float y1, float z1, float x2, float y2, float z2)
 {
     float dist = 0;
@@ -100,6 +117,8 @@ float distance(float x1, float y1, float z1, float x2, float y2, float z2)
     dist += (z1 - z2) * (z1 - z2);
     return dist;
 }
+
+// This function checks whether collison has happened or not , would be called each time redisplay is called
 bool check()
 {
     if (!start)
@@ -122,15 +141,15 @@ bool check()
     }
     else if (craft2)
     {
-        ans = ans and (distance(asteroid6_x, asteroid6_y + 10 + ast_y, asteroid6_z - 10, spacecraft2_x, spacecraft2_y - 8.0, spacecraft2_z + 3) > 40);
-        ans = ans and (distance(asteroid9_x + 5, asteroid9_y + 20 + ast_y, asteroid9_z - 4, spacecraft2_x, spacecraft2_y - 8.0, spacecraft2_z + 3) > 35);
-        ans = ans and (distance(asteroid4_x - 10, asteroid4_y + 30 + ast_y, asteroid4_z - 14, spacecraft2_x-9.4, spacecraft2_y - 11.0, spacecraft2_z -9) > 28);
-        ans = ans and (distance(asteroid5_x - 5, asteroid5_y + 40 + ast_y, asteroid5_z - 10, spacecraft2_x, spacecraft2_y - 8.0, spacecraft2_z + 3) > 25);
-        ans = ans and (distance(asteroid6_x + 9, asteroid6_y + 50 + ast_y, asteroid6_z - 10, spacecraft2_x, spacecraft2_y - 8.0, spacecraft2_z + 3) > 25);
-        ans = ans and (distance(asteroid10_x - 5, asteroid10_y + 60 + ast_y, asteroid10_z - 4, spacecraft2_x, spacecraft2_y - 8.0, spacecraft2_z + 3) > 25);
-        ans = ans and (distance(asteroid8_x - 8, asteroid8_y + 70 + ast_y, asteroid8_z - 12, spacecraft2_x, spacecraft2_y - 8.0, spacecraft2_z + 3) > 25);
-        ans = ans and (distance(asteroid5_x + 5, asteroid5_y + 80 + ast_y, asteroid5_z - 10, spacecraft2_x, spacecraft2_y - 8.0, spacecraft2_z + 3) > 25);
-        ans = ans and (distance(asteroid7_x - 5, asteroid7_y + 90 + ast_y, asteroid7_z - 15, spacecraft2_x, spacecraft2_y - 8.0, spacecraft2_z + 3) > 25);
+        ans = ans and (distance(asteroid6_x, asteroid6_y + 10 + ast_y, asteroid6_z - 10, spacecraft2_x, spacecraft2_y - 8.15, spacecraft2_z - 10) > 16);
+        ans = ans and (distance(asteroid9_x + 5, asteroid9_y + 20 + ast_y, asteroid9_z - 4, spacecraft2_x, spacecraft2_y - 8.15, spacecraft2_z - 10) > 16);
+        ans = ans and (distance(asteroid4_x - 10, asteroid4_y + 30 + ast_y, asteroid4_z - 14, spacecraft2_x, spacecraft2_y - 8.15, spacecraft2_z - 10) > 16);
+        ans = ans and (distance(asteroid5_x - 5, asteroid5_y + 40 + ast_y, asteroid5_z - 10, spacecraft2_x, spacecraft2_y - 8.15, spacecraft2_z - 10) > 16);
+        ans = ans and (distance(asteroid6_x + 9, asteroid6_y + 50 + ast_y, asteroid6_z - 10, spacecraft2_x, spacecraft2_y - 8.15, spacecraft2_z - 10) > 16);
+        ans = ans and (distance(asteroid10_x - 5, asteroid10_y + 60 + ast_y, asteroid10_z - 4, spacecraft2_x, spacecraft2_y - 8.15, spacecraft2_z - 10) > 16);
+        ans = ans and (distance(asteroid8_x - 8, asteroid8_y + 70 + ast_y, asteroid8_z - 12, spacecraft2_x, spacecraft2_y - 8.15, spacecraft2_z - 10) > 16);
+        ans = ans and (distance(asteroid5_x + 5, asteroid5_y + 80 + ast_y, asteroid5_z - 10, spacecraft2_x, spacecraft2_y - 8.15, spacecraft2_z - 10) > 16);
+        ans = ans and (distance(asteroid7_x - 5, asteroid7_y + 90 + ast_y, asteroid7_z - 15, spacecraft2_x, spacecraft2_y - 8.15, spacecraft2_z - 10) > 16);
     }
     else if (craft3)
     {
@@ -148,18 +167,19 @@ bool check()
     return ans;
 }
 
+// returns random float numbers , this function helps in drawing of background stars
 float randomFloat()
 {
     // srand(1);
     return -20.0f + 40.0f * ((float)(rand()) / RAND_MAX);
 }
-
+// background() function makes the background filled of stars
 void background()
 {
     glColor3f(1, 1, 1);
 
     srand(1);
-
+    // generate 5000 random coordinates
     for (int i = 0; i < 5000; i++)
     {
         int s = ((int)rand()) % 3 + 1;
@@ -173,28 +193,64 @@ void background()
     }
 }
 
+GLfloat white[] = {1., 1., 1., 1.};
+GLfloat mat_shininess[] = {10};
+GLfloat light_pos[] = {0.0f, 0.0f, 10.0f, 10.0f};
+GLfloat amb[] = {1, 1, 1, 1};
+
 void init()
 {
     LoadGLTextures();
-    // glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
-    glLightfv(GL_LIGHT0, GL_POSITION, light_pos);
-    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
+    glEnable(GL_LIGHT0);                             // Enables a light source.
+    glLightfv(GL_LIGHT0, GL_POSITION, light_pos);    // Sets the position of a light source.
+    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE); // Enables two-sided lighting.
+
+    glLightfv(GL_LIGHT0, GL_AMBIENT, amb);   // Sets the ambient color of a light source.
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, white); // Sets the diffuse color of a light source.
+
+    // Sets the clear color of the framebuffer.
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+
+    // Sets the current matrix mode to projection.
     glMatrixMode(GL_PROJECTION);
+
+    // Replaces the current matrix with the identity matrix.
     glLoadIdentity();
+
+    // Sets the material shininess of front and back faces.
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
+
+    // Defines a perspective projection matrix.
     gluPerspective(45.0, 1.0, 1.0, 2000.0);
+
+    // Sets the current matrix mode to modelview.
     glMatrixMode(GL_MODELVIEW);
-    glEnable(GL_BLEND);
+
+    // Specifies the pixel arithmetic for blending.
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Enables anti-aliasing for lines.
     glEnable(GL_LINE_SMOOTH);
+
+    // Sets the wrap parameter for texture coordinate S to repeat.
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+
+    // Sets the wrap parameter for texture coordinate T to repeat.
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    // Sets the texture minifying function to linear interpolation.
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+    // Sets the texture magnifying function to linear interpolation.
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // Enables 2D texturing.
     glEnable(GL_TEXTURE_2D);
+
+    // Enables depth testing.
     glEnable(GL_DEPTH_TEST);
 
+    // Loads the 3D models for spacecrafts, satellites, and asteroids
     spacecraft1_model.load(spacecraft1_str.c_str());
     spacecraft2_model.load(spacecraft2_str.c_str());
     spacecraft3_model.load(spacecraft3_str.c_str());
@@ -207,20 +263,22 @@ void init()
     asteroid9_model.load(asteroid9_str.c_str());
     asteroid10_model.load(asteroid10_str.c_str());
 
+    // Sets the initial position of spacecraft1
     spacecraft1_x = spacecraft1_model.pos_x;
     spacecraft1_y = spacecraft1_model.pos_y;
     spacecraft1_z = spacecraft1_model.pos_z - 1.0f;
 
+    // Sets the initial position of spacecraft2
     spacecraft2_x = spacecraft2_model.pos_x;
     spacecraft2_y = spacecraft2_model.pos_y;
     spacecraft2_z = spacecraft2_model.pos_z - 1.0f;
 
-    // std::cout<<spacecraft3_x<<" "<<spacecraft3_y<<" "<<spacecraft3_z<<"\n";
-
+    // Sets the initial position of spacecraft3
     spacecraft3_x = spacecraft3_model.pos_x;
     spacecraft3_y = spacecraft3_model.pos_y;
     spacecraft3_z = spacecraft3_model.pos_z - 1.0f;
 
+    // These lines of code are assigning initial values to various variables, such as positions and zoom level, based on the initial positions and properties of various models such as spacecrafts, satellites, and asteroids.
     spacecraft1_x_old = spacecraft1_x;
     spacecraft1_y_old = spacecraft1_y;
     spacecraft1_z_old = spacecraft1_z;
@@ -266,21 +324,28 @@ void init()
     asteroid10_z = asteroid10_model.pos_z - 1.0f;
 
     zoom_per_scroll = -spacecraft1_model.pos_z / 10.0f;
-
-    // std::cout << asteroid4_x << " " << asteroid4_y << " " << asteroid4_z << "\n";
-    // std::cout << spacecraft2_x << " " << spacecraft2_y << " " << spacecraft2_z << "\n";
 }
 
-// Function for menuBackground
-void menuBack()
+void galaxy()
 {
+    // Code for changing day and night mode and changing shininess property of materials
+    GLfloat white8[] = {a_x, a_y, a_z, 1.0};
+    GLfloat white2[] = {b_x, b_y, b_z, 1.0};
+
+    glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, white8);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, white2);
+
     glPushMatrix();
+    if (change_mode)
+    {
+        glDisable(GL_LIGHTING);
+    }
     glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, texture);
+    glBindTexture(GL_TEXTURE_2D, texture[1]); // Binding image to texture
     glTranslatef(0, 0, -30);
-    glBegin(GL_QUADS);
+    glBegin(GL_QUADS); // Creating Quad/Polygon and putting texture on it so that image is rendered on this polygon
     glTexCoord2f(0.0f, 0.0f);
-    float xmin = 5.5, xmax = 10.5, ymin = 0.0, ymax = 5.5;
+    float xmin = -20, xmax = 20, ymin = -20, ymax = 20;
     glVertex3f(xmin, ymin, -20.0);
     glTexCoord2f(0.0f, 1.0f);
     glVertex3f(xmin, ymax, -20.0);
@@ -298,30 +363,36 @@ void display()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
-    if (!show_menu && !collision_menu && !spacecraft_menu)
+    if (!show_menu && !collision_menu && !spacecraft_menu && !info_menu) // Playing screen
     {
-        if (!check())
+        galaxy(); // Creating galaxy
+        if (!check()) // Checking for collision
         {
             // std::cout<<"yayy\n";
+            system("play -q collison.wav &");
+            sleep(1);
             collision_menu = true;
             start = false;
-            goto jump;
+            goto jump; // If collision then no need to render things written down
         }
         glPushMatrix();
-        glDisable(GL_LIGHTING);
         glDepthMask(GL_FALSE); // disable depth writes
+
+        glDisable(GL_LIGHTING);
 
         glTranslatef(0, trans_y, 0);
         background();
 
-        glDepthMask(GL_TRUE); // enable depth writes
         glEnable(GL_LIGHTING);
+        glDepthMask(GL_TRUE); // enable depth writes
         glPopMatrix();
 
         glPushMatrix();
 
+        // Translate Asteroids downwards
         glTranslatef(0, ast_y, 0);
 
+        // Create asteroids
         glPushMatrix();
         glTranslatef(asteroid6_x, asteroid6_y + 10, asteroid6_z - 10);
         asteroid6_model.draw();
@@ -371,6 +442,7 @@ void display()
 
         glPushMatrix();
 
+        // Draw corresponding spacecraft
         if (craft1)
         {
             glTranslatef(spacecraft1_x, spacecraft1_y - 8.0, spacecraft1_z + 3);
@@ -399,7 +471,7 @@ void display()
 
         glPopMatrix();
 
-        if (space_pressed)
+        if (space_pressed) // Space pressed, giving home button
         {
             glPushMatrix();
             glDisable(GL_LIGHTING);
@@ -465,8 +537,9 @@ void display()
         glEnable(GL_LIGHTING);
         glPopMatrix();
     }
-    else if (show_menu && !collision_menu && !spacecraft_menu)
+    else if (show_menu && !collision_menu && !spacecraft_menu && !info_menu) // Home menu
     {
+        galaxy();
         glPushMatrix();
         glDisable(GL_LIGHTING);
         glDepthMask(GL_FALSE); // disable depth writes
@@ -502,16 +575,34 @@ void display()
         // Draw the play button
         glColor3f(0.0, 1.0, 0.0);
         glBegin(GL_QUADS);
-        glVertex3f(-0.2, -0.3, -2.0);
-        glVertex3f(0.2, -0.3, -2.0);
-        glVertex3f(0.2, -0.4, -2.0);
-        glVertex3f(-0.2, -0.4, -2.0);
+        glVertex3f(-0.2, -0.25, -2.0);
+        glVertex3f(0.2, -0.25, -2.0);
+        glVertex3f(0.2, -0.35, -2.0);
+        glVertex3f(-0.2, -0.35, -2.0);
         glEnd();
 
-        // Draw the quit button
+        // Text for play button
         glColor3f(1.0f, 0.0f, 0.0f);
-        glRasterPos3f(-0.025, -0.18, -1.0);
+        glRasterPos3f(-0.025, -0.156, -1.0);
         text = "PLAY";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+
+        // Draw the info button
+        glColor3f(0.0, 1.0, 1.0);
+        glBegin(GL_QUADS);
+        glVertex3f(-0.2, -0.4, -2.0);
+        glVertex3f(0.2, -0.4, -2.0);
+        glVertex3f(0.2, -0.5, -2.0);
+        glVertex3f(-0.2, -0.5, -2.0);
+        glEnd();
+
+        // Text for info button
+        glColor3f(1.0f, 0.0f, 0.0f);
+        glRasterPos3f(-0.07, -0.23, -1.0);
+        text = "INSTRUCTIONS";
         for (int i = 0; i < text.length(); i++)
         {
             glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
@@ -520,15 +611,15 @@ void display()
         // Draw the quit button
         glColor3f(1.0, 0.0, 0.0);
         glBegin(GL_QUADS);
-        glVertex3f(-0.2, -0.5, -2.0);
-        glVertex3f(0.2, -0.5, -2.0);
-        glVertex3f(0.2, -0.6, -2.0);
-        glVertex3f(-0.2, -0.6, -2.0);
+        glVertex3f(-0.2, -0.55, -2.0);
+        glVertex3f(0.2, -0.55, -2.0);
+        glVertex3f(0.2, -0.65, -2.0);
+        glVertex3f(-0.2, -0.65, -2.0);
         glEnd();
 
-        // Draw the quit button
+        // Text for quit button
         glColor3f(0.0f, 1.0f, 0.0f);
-        glRasterPos3f(-0.025, -0.28, -1.0);
+        glRasterPos3f(-0.025, -0.307, -1.0);
         text = "QUIT";
         for (int i = 0; i < text.length(); i++)
         {
@@ -536,11 +627,11 @@ void display()
         }
 
         glEnable(GL_LIGHTING);
-        menuBack();
         glPopMatrix();
     }
-    else if (collision_menu && !spacecraft_menu)
+    else if (collision_menu && !spacecraft_menu && !info_menu) // Collision Menu
     {
+        galaxy();
         glPushMatrix();
         glDisable(GL_LIGHTING);
         glDepthMask(GL_FALSE); // disable depth writes
@@ -586,14 +677,14 @@ void display()
         }
 
         glColor3f(0.0, 0.0, 0.0);
-        glRasterPos3f(-0.115, 0.12, -1.0);
+        glRasterPos3f(-0.115, 0.12, -1.0); // Print Distance covered
         text = "Total Distance Covered: " + std::to_string(int(distance_covered)) + "m";
         for (int i = 0; i < text.length(); i++)
         {
             glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
         }
 
-        glRasterPos3f(-0.05, 0.06, -1.0);
+        glRasterPos3f(-0.05, 0.06, -1.0); //Print current score
         text = "Total Score: " + std::to_string(score);
         for (int i = 0; i < text.length(); i++)
         {
@@ -645,7 +736,7 @@ void display()
         glVertex3f(-0.2, -0.6, -2.0);
         glEnd();
 
-        // Draw the quit button
+        // Text for quit button
         glColor3f(0.0f, 1.0f, 0.0f);
         glRasterPos3f(-0.025, -0.28, -1.0);
         text = "QUIT";
@@ -658,14 +749,15 @@ void display()
         glEnable(GL_LIGHTING);
         glPopMatrix();
     }
-    else
+    else if (spacecraft_menu && !info_menu) // Select spacecraft menu
     {
+        galaxy();
         glPushMatrix();
         glDisable(GL_LIGHTING);
         glDepthMask(GL_FALSE); // disable depth writes
 
         glPushMatrix();
-        // Draw the title
+        // Write the title
         glColor3f(1.0f, 1.0f, 1.0f);
         glRasterPos3f(-0.2, 0.6, -2.0);
         std::string text = "SELECT THE SPACECRAFT";
@@ -682,6 +774,7 @@ void display()
         glEnable(GL_LIGHTING);
         glPopMatrix();
 
+        // Draw spacecraft
         if (craft1)
         {
             glPushMatrix();
@@ -757,23 +850,29 @@ void display()
             glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
         }
 
-        // Text the Name
+        // Spaceship Name
         glColor3f(1.0f, 1.0f, 1.0f);
         glRasterPos3f(-0.04, -0.27, -2.0);
 
-        if(craft1){
+        if (craft1)
+        {
             text = "X-WING";
-        } else if(craft2){
+        }
+        else if (craft2)
+        {
             text = "UFO";
-        } else if(craft3){
+        }
+        else if (craft3)
+        {
             text = "SKY-BLADE";
         }
-        
+
         for (int i = 0; i < text.length(); i++)
         {
             glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
         }
 
+        // Draw Home button
         glColor3f(0.137, 0.51, 0.631);
         glBegin(GL_QUADS);
         glVertex3f(-0.45, -0.5, -2.0);
@@ -782,7 +881,7 @@ void display()
         glVertex3f(-0.45, -0.6, -2.0);
         glEnd();
 
-        // Draw the quit button
+        // Text for Home button
         glColor3f(1.0f, 1.0f, 1.0f);
         glRasterPos3f(-0.18, -0.28, -1.0);
         text = "HOME";
@@ -791,6 +890,7 @@ void display()
             glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
         }
 
+        // Draw Select button
         glColor3f(0.137, 0.51, 0.631);
         glBegin(GL_QUADS);
         glVertex3f(0.45, -0.5, -2.0);
@@ -799,7 +899,7 @@ void display()
         glVertex3f(0.45, -0.6, -2.0);
         glEnd();
 
-        // Draw the quit button
+        // Text for select button
         glColor3f(1.0f, 1.0f, 1.0f);
         glRasterPos3f(0.115, -0.28, -1.0);
         text = "SELECT";
@@ -811,13 +911,134 @@ void display()
         glEnable(GL_LIGHTING);
         glPopMatrix();
     }
+    else if (info_menu) // Instructions Panel
+    {
+        glPushMatrix();
+        glDisable(GL_LIGHTING);
+        glDepthMask(GL_FALSE); // disable depth writes
+
+        glPushMatrix();
+        // Draw the title
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glRasterPos3f(-0.19, 0.6, -2.0);
+        std::string text = "INSTRUCTIONS";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+        glPopMatrix();
+
+        glTranslatef(0, trans_y, 0);
+        background();
+
+        glDepthMask(GL_TRUE); // enable depth writes
+        glEnable(GL_LIGHTING);
+        glPopMatrix();
+
+        glPushMatrix();
+        glDepthMask(GL_FALSE); // disable depth writes
+        glDisable(GL_LIGHTING);
+
+        glRasterPos3f(-0.29, 0.2, -1.0);
+        text = "'UP arrow' key           :      MOVE SPACESHIP UP";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+
+        glRasterPos3f(-0.29, 0.17, -1.0);
+        text = "'DOWN arrow' key    :      MOVE SPACESHIP DOWN";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+        glRasterPos3f(-0.29, 0.14, -1.0);
+        text = "'LEFT arrow' key       :      MOVE SPACESHIP LEFT";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+        glRasterPos3f(-0.29, 0.11, -1.0);
+        text = "'RIGHT arrow' key    :      MOVE RIGHT";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+        glRasterPos3f(-0.29, 0.08, -1.0);
+        text = "'N' KEY                      :      ENABLE/DISABLE NIGHT MODE";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+        glRasterPos3f(-0.29, 0.05, -1.0);
+        text = "'+' KEY                       :      INCREASE SHININESS";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+        glRasterPos3f(-0.29, 0.02, -1.0);
+        text = "'-' KEY                       :      DECREASE SHININESS";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+        glRasterPos3f(-0.29, -0.01, -1.0);
+        text = "'ENTER' key              :      MOVE TO NEXT MENU";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+        glRasterPos3f(-0.29, -0.04, -1.0);
+        text = "'ESC' key                    :      MOVE TO PREVIOUS MENU";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+        glRasterPos3f(-0.29, -0.07, -1.0);
+        text = "'SPACE' KEY            :      PAUSE/START";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+        glRasterPos3f(-0.29, -0.1, -1.0);
+        text = "HOLD LEFT-MB      :      ROTATE SPACESHIPS";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+
+        // Draw the Home button
+        glColor3f(1.0, 0.0, 0.0);
+        glBegin(GL_QUADS);
+        glVertex3f(-0.2, -0.5, -2.0);
+        glVertex3f(0.2, -0.5, -2.0);
+        glVertex3f(0.2, -0.6, -2.0);
+        glVertex3f(-0.2, -0.6, -2.0);
+        glEnd();
+
+        // Text for Home button
+        glColor3f(0.0f, 1.0f, 0.0f);
+        glRasterPos3f(-0.03, -0.28, -1.0);
+        text = "HOME";
+        for (int i = 0; i < text.length(); i++)
+        {
+            glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
+        }
+
+        glDepthMask(GL_TRUE); // enable depth writes
+        glEnable(GL_LIGHTING);
+        glPopMatrix();
+    }
 jump:
+    glColor3f(1.0, 1.0, 1.0);
     glFlush();
     glutSwapBuffers();
 }
 
+// Timer function is called after every 15 millisecond
 void timer(int value)
 {
+    // Translating background stars
     trans_y -= 0.01;
 
     if (trans_y < -8)
@@ -825,17 +1046,22 @@ void timer(int value)
 
     if (start)
     {
+        // Increase distance
         distance_covered += 10.0;
+        // Increase socre
         if (int(distance_covered) % 9 == 8)
         {
             score += 1;
         }
 
+        // Increase level along with increasing speed for asteroids and spacecraft
         ast_y -= (level_speed);
         if (ast_y < -100)
         {
             ast_y = 0;
             level_speed += 0.04;
+            hor_speed += 0.02;
+            ver_speed += 0.015;
             level++;
         }
     }
@@ -846,34 +1072,34 @@ void timer(int value)
         glutPostRedisplay();
     }
     glutPostRedisplay();
-    glutTimerFunc(INTERVAL, timer, 0);
+    glutTimerFunc(INTERVAL, timer, 0); // Recursive after every 15ms
 }
 
 void specialKeyFunc(int key, int x, int y)
 {
-    if (!show_menu && !space_pressed && !collision_menu && !spacecraft_menu)
+    if (!show_menu && !space_pressed && !collision_menu && !spacecraft_menu) // While playing with spacecraft
     {
         if (craft1)
         {
             if (key == GLUT_KEY_DOWN)
             {
                 if (spacecraft1_y > -1.737)
-                    spacecraft1_y -= 0.1;
+                    spacecraft1_y -= ver_speed;
             }
             else if (key == GLUT_KEY_UP)
             {
                 if (spacecraft1_y < 16.2629)
-                    spacecraft1_y += 0.1;
+                    spacecraft1_y += ver_speed;
             }
             else if (key == GLUT_KEY_RIGHT)
             {
                 if (spacecraft1_x < 8.71)
-                    spacecraft1_x += 0.15;
+                    spacecraft1_x += hor_speed;
             }
             else if (key == GLUT_KEY_LEFT)
             {
                 if (spacecraft1_x > -9.79)
-                    spacecraft1_x -= 0.15;
+                    spacecraft1_x -= hor_speed;
             }
         }
         else if (craft2)
@@ -881,22 +1107,22 @@ void specialKeyFunc(int key, int x, int y)
             if (key == GLUT_KEY_DOWN)
             {
                 if (spacecraft2_y > -1.6)
-                    spacecraft2_y -= 0.1;
+                    spacecraft2_y -= ver_speed;
             }
             else if (key == GLUT_KEY_UP)
             {
                 if (spacecraft2_y < 17.38)
-                    spacecraft2_y += 0.1;
+                    spacecraft2_y += ver_speed;
             }
             else if (key == GLUT_KEY_RIGHT)
             {
                 if (spacecraft2_x < 8.71)
-                    spacecraft2_x += 0.15;
+                    spacecraft2_x += hor_speed;
             }
             else if (key == GLUT_KEY_LEFT)
             {
                 if (spacecraft2_x > -9.79)
-                    spacecraft2_x -= 0.15;
+                    spacecraft2_x -= hor_speed;
             }
         }
         else if (craft3)
@@ -904,28 +1130,28 @@ void specialKeyFunc(int key, int x, int y)
             if (key == GLUT_KEY_DOWN)
             {
                 if (spacecraft3_y > -1.737)
-                    spacecraft3_y -= 0.1;
+                    spacecraft3_y -= ver_speed;
             }
             else if (key == GLUT_KEY_UP)
             {
                 if (spacecraft3_y < 16.2629)
-                    spacecraft3_y += 0.1;
+                    spacecraft3_y += ver_speed;
             }
             else if (key == GLUT_KEY_RIGHT)
             {
                 if (spacecraft3_x < 8.71)
-                    spacecraft3_x += 0.15;
+                    spacecraft3_x += hor_speed;
             }
             else if (key == GLUT_KEY_LEFT)
             {
                 if (spacecraft3_x > -9.79)
-                    spacecraft3_x -= 0.15;
+                    spacecraft3_x -= hor_speed;
             }
         }
 
         glutPostRedisplay();
     }
-    else if (spacecraft_menu)
+    else if (spacecraft_menu) // Moving next and prev spacecrafts
     {
         if (key == GLUT_KEY_RIGHT)
         {
@@ -1004,7 +1230,53 @@ void specialKeyFunc(int key, int x, int y)
 
 void keyboard(unsigned char key, int x, int y)
 {
-    if (!show_menu && !collision_menu && !spacecraft_menu)
+    if (key == 'n') // Changing day and night modes
+    {
+        change_mode = !change_mode;
+        if (change_mode)
+        {
+            a_x = 0.25;
+            a_y = 0.25;
+            a_z = 0.25;
+            b_x = 0.0;
+            b_y = 0.0;
+            b_z = 0.0;
+        }
+        else
+        {
+            a_x = 0.05;
+            a_y = 0.05;
+            a_z = 0.05;
+        }
+    }
+    if (!change_mode) // Changing shininess property of materials
+    {
+        if (key == 43) // + key
+        {
+            b_x += 0.2;
+            b_y += 0.2;
+            b_z += 0.2;
+            if (b_x > 4 || b_y > 4 || b_z > 4)
+            {
+                b_x = 4;
+                b_y = 4;
+                b_z = 4;
+            }
+        }
+        else if (key == 45) // - key
+        {
+            b_x -= 0.2;
+            b_y -= 0.2;
+            b_z -= 0.2;
+            if (b_x < 0 || b_y < 0 || b_z < 0)
+            {
+                b_x = 0;
+                b_y = 0;
+                b_z = 0;
+            }
+        }
+    }
+    if (!show_menu && !collision_menu && !spacecraft_menu) // While playing with spacecraft
     {
         switch (key)
         {
@@ -1014,9 +1286,9 @@ void keyboard(unsigned char key, int x, int y)
             break;
         }
     }
-    else if (spacecraft_menu && !show_menu && !collision_menu)
+    else if (spacecraft_menu && !show_menu && !collision_menu) // Spacecraft Menu
     {
-        if (key == 13)
+        if (key == 13) // Enter key
         {
             spacecraft_menu = false;
             trans_y = 0;
@@ -1056,7 +1328,7 @@ void keyboard(unsigned char key, int x, int y)
                 spacecraft3_y = spacecraft3_y_old;
             }
         }
-        else if (key == 27)
+        else if (key == 27) // ESC key
         {
             spacecraft_menu = false;
             show_menu = true;
@@ -1078,9 +1350,9 @@ void keyboard(unsigned char key, int x, int y)
             craft3 = false;
         }
     }
-    else if (show_menu && !collision_menu && !spacecraft_menu)
+    else if (show_menu && !collision_menu && !spacecraft_menu) // Show Menu
     {
-        if (key == 13)
+        if (key == 13) // ENTER key
         {
             show_menu = false;
             spacecraft_menu = true;
@@ -1091,7 +1363,7 @@ void keyboard(unsigned char key, int x, int y)
 
 void mouse(int button, int state, int x, int y)
 {
-    if (show_menu && !collision_menu && !spacecraft_menu)
+    if (show_menu && !collision_menu && !spacecraft_menu && !info_menu) // Buttons in show menu
     {
         is_updated = true;
 
@@ -1099,16 +1371,25 @@ void mouse(int button, int state, int x, int y)
         if (button == GLUT_LEFT_BUTTON && state == GLUT_UP)
         {
             // Check if the mouse cursor is within the bounds of the play button
-            if (x >= 380 && x <= 620 && y >= 680 && y <= 745)
+
+            if (x >= 381 && x <= 622 && y >= 652 && y <= 712)  // Play
             {
                 // Call a function to start the game
+                system("play -q click.wav &");
                 show_menu = false;
                 spacecraft_menu = true;
             }
+            else if (x >= 381 && x <= 622 && y >= 743 && y <= 801) // Information menu
+            {
+                system("play -q click.wav &");
+                show_menu = false;
+                info_menu = true;
+            }
             // Check if the mouse cursor is within the bounds of the quit button
-            else if (x >= 380 && x <= 620 && y >= 800 && y <= 865)
+            else if (x >= 381 && x <= 622 && y >= 831 && y <= 893) // Exit
             {
                 // Call a function to exit the program
+                system("play -q click.wav &");
                 exit(0);
             }
         }
@@ -1124,64 +1405,43 @@ void mouse(int button, int state, int x, int y)
                 is_holding_mouse = false;
         }
     }
-    else if (collision_menu && !spacecraft_menu)
+    else if (collision_menu && !spacecraft_menu && !info_menu) // Collision menu
     {
         is_updated = true;
 
         // Check if the left mouse button was pressed and released
         if (button == GLUT_LEFT_BUTTON && state == GLUT_UP)
         {
-            if (x >= 379 && x <= 622 && y >= 560 && y <= 625)
+            if (x >= 379 && x <= 622 && y >= 560 && y <= 625) // Home
             {
+                system("play -q click.wav &");
                 show_menu = true;
                 collision_menu = false;
+                if (craft1)
+                {
+                    spacecraft1_x = spacecraft1_x_old;
+                    spacecraft1_y = spacecraft1_y_old;
+                }
+                else if (craft2)
+                {
+                    spacecraft2_x = spacecraft2_x_old;
+                    spacecraft2_y = spacecraft2_y_old;
+                }
+                else if (craft3)
+                {
+                    spacecraft3_x = spacecraft3_x_old;
+                    spacecraft3_y = spacecraft3_y_old;
+                }
             }
 
             // Check if the mouse cursor is within the bounds of the play button
-            else if (x >= 380 && x <= 620 && y >= 680 && y <= 745)
+            else if (x >= 380 && x <= 620 && y >= 680 && y <= 745) // Play again
             {
                 // Call a function to start the game
                 collision_menu = false;
                 spacecraft_menu = true;
                 if (craft1)
                 {
-                    spacecraft_menu = false;
-                    trans_y = 0;
-                    distance_covered = 0;
-                    start = true;
-                    ast_y = 0;
-                    level_speed = 0.08;
-                    level = 1;
-                    score = 0;
-
-                    angle_craft1_x = 0;
-                    angle_craft1_y = 90;
-                    angle_craft2_x = 0;
-                    angle_craft2_y = 90;
-                    angle_craft3_x = 0;
-                    angle_craft3_y = 90;
-                    craft1_x = 0;
-                    craft1_y = 0;
-                    craft2_x = 0;
-                    craft2_y = 0;
-                    craft3_x = 0;
-                    craft3_y = 0;
-
-                    if (craft1)
-                    {
-                        spacecraft1_x = spacecraft1_x_old;
-                        spacecraft1_y = spacecraft1_y_old;
-                    }
-                    else if (craft2)
-                    {
-                        spacecraft2_x = spacecraft2_x_old;
-                        spacecraft2_y = spacecraft2_y_old;
-                    }
-                    else if (craft3)
-                    {
-                        spacecraft3_x = spacecraft3_x_old;
-                        spacecraft3_y = spacecraft3_y_old;
-                    }
                     spacecraft1_x = spacecraft1_x_old;
                     spacecraft1_y = spacecraft1_y_old;
                 }
@@ -1199,7 +1459,7 @@ void mouse(int button, int state, int x, int y)
                 angle_y = 90.0f;
             }
             // Check if the mouse cursor is within the bounds of the quit button
-            else if (x >= 380 && x <= 620 && y >= 800 && y <= 865)
+            else if (x >= 380 && x <= 620 && y >= 800 && y <= 865) // quit
             {
                 // Call a function to exit the program
                 exit(0);
@@ -1207,17 +1467,19 @@ void mouse(int button, int state, int x, int y)
             // glutPostRedisplay();
         }
     }
-    else if (!spacecraft_menu)
+    else if (!spacecraft_menu && !info_menu) // While playing with spacecraft
     {
         is_updated = true;
-        if (space_pressed)
+        if (space_pressed) // If space is pressed stop every motion
         {
             if (button == GLUT_LEFT_BUTTON && state == GLUT_UP)
             {
                 // Check if the mouse cursor is within the bounds of the play button
-                if (x >= 0 && x <= 110 && y >= 0 && y <= 45)
+
+                if (x >= 0 && x <= 110 && y >= 0 && y <= 45) // Home
                 {
                     // Call a function to start the game
+                    system("play -q click.wav &");
                     angle_x = -45.0f;
                     angle_y = 90.0f;
                     angle_satellite_x = 0.0f;
@@ -1255,6 +1517,12 @@ void mouse(int button, int state, int x, int y)
                     craft2 = false;
                     craft3 = false;
 
+                    b_x = 0.0;
+                    b_y = 0.0;
+                    b_z = 0.0;
+
+                    // change_mode = false;
+
                     if (craft1)
                     {
                         spacecraft1_x = spacecraft1_x_old;
@@ -1288,16 +1556,18 @@ void mouse(int button, int state, int x, int y)
             }
         }
     }
-    else
+    else if (spacecraft_menu && !info_menu) // Spacecraft menu
     {
         is_updated = true;
 
         // Check if the left mouse button was pressed and released
-        if (button == GLUT_LEFT_BUTTON && state == GLUT_UP)
+        if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) 
         {
             // std::cout<<x<<" "<<y<<"\n";
-            if (x >= 863 && x <= 901 && y >= 272 && y <= 500)
+
+            if (x >= 863 && x <= 901 && y >= 272 && y <= 500) // Next spacecraft
             {
+                system("play -q click.wav &");
                 if (craft1)
                 {
                     craft1 = false;
@@ -1332,8 +1602,9 @@ void mouse(int button, int state, int x, int y)
                     angle_craft3_y = 90;
                 }
             }
-            else if (x >= 103 && x <= 138 && y >= 271 && y <= 501)
+            else if (x >= 103 && x <= 138 && y >= 271 && y <= 501) // Prev Spacecraft
             {
+                system("play -q click.wav &");
                 if (craft1)
                 {
                     craft1 = false;
@@ -1368,8 +1639,9 @@ void mouse(int button, int state, int x, int y)
                     angle_craft3_y = 90;
                 }
             }
-            else if (x >= 229 && x <= 409 && y >= 804 && y <= 862)
+            else if (x >= 229 && x <= 409 && y >= 804 && y <= 862) // Home
             {
+                system("play -q click.wav &");
                 spacecraft_menu = false;
                 show_menu = true;
                 angle_craft1_x = 0;
@@ -1388,11 +1660,11 @@ void mouse(int button, int state, int x, int y)
                 craft1 = true;
                 craft2 = false;
                 craft3 = false;
-
             }
-            // Check if the mouse cursor is within the bounds of the quit button
-            else if (x >= 591 && x <= 772 && y >= 804 && y <= 864)
+            // Check if the mouse cursor is within the bounds of the select button
+            else if (x >= 591 && x <= 772 && y >= 804 && y <= 864) // Select
             {
+                system("play -q click.wav &");
                 spacecraft_menu = false;
                 trans_y = 0;
                 distance_covered = 0;
@@ -1458,12 +1730,21 @@ void mouse(int button, int state, int x, int y)
                 is_holding_mouse = false;
         }
     }
+    else if (info_menu) // Information menu
+    {
+        if (x >= 379 && x <= 622 && y >= 803 && y <= 865) // Home
+        {
+            system("play -q click.wav &");
+            show_menu = true;
+            info_menu = false;
+        }
+    }
     glutPostRedisplay();
 }
 
 void motion(int x, int y)
 {
-    if (!show_menu && !space_pressed && !collision_menu && !spacecraft_menu)
+    if (!show_menu && !space_pressed && !collision_menu && !spacecraft_menu) // While playing with spacecraft
     {
         if (is_holding_mouse)
         {
@@ -1484,7 +1765,7 @@ void motion(int x, int y)
                 angle_x = -90.0f;
         }
     }
-    else if (show_menu && !spacecraft_menu)
+    else if (show_menu && !spacecraft_menu) // While rotating staellite in Home menu
     {
         if (is_holding_mouse)
         {
@@ -1505,7 +1786,7 @@ void motion(int x, int y)
                 angle_satellite_x = -90.0f;
         }
     }
-    else if (spacecraft_menu)
+    else if (spacecraft_menu) // Now rotate spacecrafts in spacecraft menu
     {
         if (is_holding_mouse)
         {
@@ -1562,25 +1843,53 @@ void motion(int x, int y)
         }
     }
 }
+// this function plays the background music and abrupts it on closing of window
+void play_sound()
+{
+    while (!closed)
+    {
+        system("play -q music.mp3 &");
+        for (int i = 0; i < 28; i++)
+        {
+            sleep(1);
+            if (closed)
+            {
+                int pid = system("pgrep play");
+                pid = atoi(std::to_string(pid).c_str());
+                kill(pid, SIGINT);
+                break;
+            }
+        }
+    }
+}
 
+// thread pointer for playing background music
+std::thread *t1;
+
+// callback function to stop playing of sound on closing of window
+void window_close_callback()
+{
+    closed = true;
+
+    t1->join();
+}
 int main(int argc, char **argv)
 {
+    t1 = new std::thread(play_sound);
     glutInit(&argc, argv);
 
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE);
-    // glEnable(GL_MULTISAMPLE);
-    // glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
-    // glutSetOption(GLUT_MULTISAMPLE, 8);
-    glutInitWindowPosition(50, 50);
-    glutInitWindowSize(1000, 1000);
-    glutCreateWindow("Space Game");
+    glutInitWindowPosition(50, 50); // window Position
+    glutInitWindowSize(1000, 1000); // Window Size
+    glutCreateWindow("Space Game"); // Window name
+    glutCloseFunc(window_close_callback); // This function would be called when the window would be closed
     init();
-    glutDisplayFunc(display);
-    glutMouseFunc(mouse);
-    glutMotionFunc(motion);
-    glutKeyboardFunc(keyboard);
-    glutSpecialFunc(specialKeyFunc);
-    glutTimerFunc(0, timer, 0);
-    glutMainLoop();
+    glutDisplayFunc(display); // Sets the display finction to be called
+    glutMouseFunc(mouse); // Set mouse callback function
+    glutMotionFunc(motion); // Set motion callback function
+    glutKeyboardFunc(keyboard); // Set keyboard callback function
+    glutSpecialFunc(specialKeyFunc); // Set special key callback function
+    glutTimerFunc(0, timer, 0);  //Set timer callback function
+    glutMainLoop(); // Enter the GLUT event processing loop.
     return 0;
 }

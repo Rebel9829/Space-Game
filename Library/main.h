@@ -8,6 +8,7 @@
 #include <GL/glext.h>
 
 #include <fstream>
+#include<iostream>
 #include <map>
 #include <vector>
 
