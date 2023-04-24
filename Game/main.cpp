@@ -18,7 +18,7 @@ std::string asteroid9_str = "Models/as9.obj";
 std::string asteroid10_str = "Models/as10.obj";
 
 // Coordinates of centres of obj models would be stored in these
-float spacecraft_x, spacecraft_y, spacecraft_z;
+// float spacecraft_x, spacecraft_y, spacecraft_z;
 float spacecraft1_x, spacecraft1_y, spacecraft1_z, trans_y, ast_y;
 float spacecraft2_x, spacecraft2_y, spacecraft2_z;
 float spacecraft3_x, spacecraft3_y, spacecraft3_z;
@@ -33,7 +33,7 @@ float asteroid7_x, asteroid7_y, asteroid7_z;
 float asteroid8_x, asteroid8_y, asteroid8_z;
 float asteroid9_x, asteroid9_y, asteroid9_z;
 float asteroid10_x, asteroid10_y, asteroid10_z;
-float particle_x, particle_y, particle_z;
+// float particle_x, particle_y, particle_z;
 
 float angle_x = -45.0f, angle_y = 90.0f;
 float angle_satellite_x = 0.0f, angle_satellite_y = 45.0f;
@@ -365,7 +365,7 @@ void display()
 
     if (!show_menu && !collision_menu && !spacecraft_menu && !info_menu) // Playing screen
     {
-        galaxy(); // Creating galaxy
+        galaxy();     // Creating galaxy
         if (!check()) // Checking for collision
         {
             // std::cout<<"yayy\n";
@@ -684,7 +684,7 @@ void display()
             glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, text[i]);
         }
 
-        glRasterPos3f(-0.05, 0.06, -1.0); //Print current score
+        glRasterPos3f(-0.05, 0.06, -1.0); // Print current score
         text = "Total Score: " + std::to_string(score);
         for (int i = 0; i < text.length(); i++)
         {
@@ -1348,6 +1348,9 @@ void keyboard(unsigned char key, int x, int y)
             craft1 = true;
             craft2 = false;
             craft3 = false;
+
+            angle_satellite_x = 0.0f;
+            angle_satellite_y = 45.0f;
         }
     }
     else if (show_menu && !collision_menu && !spacecraft_menu) // Show Menu
@@ -1372,7 +1375,7 @@ void mouse(int button, int state, int x, int y)
         {
             // Check if the mouse cursor is within the bounds of the play button
 
-            if (x >= 381 && x <= 622 && y >= 652 && y <= 712)  // Play
+            if (x >= 381 && x <= 622 && y >= 652 && y <= 712) // Play
             {
                 // Call a function to start the game
                 system("play -q click.wav &");
@@ -1432,6 +1435,10 @@ void mouse(int button, int state, int x, int y)
                     spacecraft3_x = spacecraft3_x_old;
                     spacecraft3_y = spacecraft3_y_old;
                 }
+                angle_x = -45.0f;
+                angle_y = 90.0f;
+                angle_satellite_x = 0.0f;
+                angle_satellite_y = 45.0f;
             }
 
             // Check if the mouse cursor is within the bounds of the play button
@@ -1561,7 +1568,7 @@ void mouse(int button, int state, int x, int y)
         is_updated = true;
 
         // Check if the left mouse button was pressed and released
-        if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) 
+        if (button == GLUT_LEFT_BUTTON && state == GLUT_UP)
         {
             // std::cout<<x<<" "<<y<<"\n";
 
@@ -1660,6 +1667,9 @@ void mouse(int button, int state, int x, int y)
                 craft1 = true;
                 craft2 = false;
                 craft3 = false;
+
+                angle_satellite_x = 0.0f;
+                angle_satellite_y = 45.0f;
             }
             // Check if the mouse cursor is within the bounds of the select button
             else if (x >= 591 && x <= 772 && y >= 804 && y <= 864) // Select
@@ -1879,17 +1889,17 @@ int main(int argc, char **argv)
     glutInit(&argc, argv);
 
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_MULTISAMPLE);
-    glutInitWindowPosition(50, 50); // window Position
-    glutInitWindowSize(1000, 1000); // Window Size
-    glutCreateWindow("Space Game"); // Window name
+    glutInitWindowPosition(50, 50);       // window Position
+    glutInitWindowSize(1000, 1000);       // Window Size
+    glutCreateWindow("Space Game");       // Window name
     glutCloseFunc(window_close_callback); // This function would be called when the window would be closed
     init();
-    glutDisplayFunc(display); // Sets the display finction to be called
-    glutMouseFunc(mouse); // Set mouse callback function
-    glutMotionFunc(motion); // Set motion callback function
-    glutKeyboardFunc(keyboard); // Set keyboard callback function
+    glutDisplayFunc(display);        // Sets the display finction to be called
+    glutMouseFunc(mouse);            // Set mouse callback function
+    glutMotionFunc(motion);          // Set motion callback function
+    glutKeyboardFunc(keyboard);      // Set keyboard callback function
     glutSpecialFunc(specialKeyFunc); // Set special key callback function
-    glutTimerFunc(0, timer, 0);  //Set timer callback function
-    glutMainLoop(); // Enter the GLUT event processing loop.
+    glutTimerFunc(0, timer, 0);      // Set timer callback function
+    glutMainLoop();                  // Enter the GLUT event processing loop.
     return 0;
 }
